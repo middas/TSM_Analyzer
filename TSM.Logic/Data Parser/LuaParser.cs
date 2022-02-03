@@ -1,7 +1,6 @@
-﻿using System.Diagnostics;
-using System.Text;
+﻿using System.Text;
 using System.Text.RegularExpressions;
-using TSM.Logic.Data_Parser.Models;
+using TSM.Core.Models;
 
 namespace TSM.Logic.Data_Parser
 {
@@ -58,6 +57,7 @@ namespace TSM.Logic.Data_Parser
 
                             tempValue.Clear();
                             break;
+
                         case ',':
                             if (!openQuote)
                             {
@@ -73,6 +73,7 @@ namespace TSM.Logic.Data_Parser
                                 currentLuaModel = lm;
                             }
                             break;
+
                         case '"':
                             if (openQuote)
                             {
@@ -81,9 +82,11 @@ namespace TSM.Logic.Data_Parser
 
                             openQuote = !openQuote;
                             break;
+
                         case '}':
                             currentLuaModel = currentLuaModel.Parent;
                             break;
+
                         case '{':
                             if (currentLuaModel.Parent != null)
                             {
@@ -92,8 +95,9 @@ namespace TSM.Logic.Data_Parser
                                 currentLuaModel = lm;
                             }
                             break;
+
                         default:
-                            tempValue.Append(data[0..nextOperatorIndex]);
+                            tempValue.Append(data);
                             break;
                     }
 

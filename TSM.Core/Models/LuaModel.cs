@@ -1,8 +1,8 @@
 ﻿using System.Collections.Immutable;
 
-namespace TSM.Logic.Data_Parser.Models
+namespace TSM.Core.Models
 {
-    internal class LuaModel
+    public class LuaModel
     {
         public ImmutableList<LuaModel> Children { get; private set; } = ImmutableList<LuaModel>.Empty;
 
@@ -11,6 +11,8 @@ namespace TSM.Logic.Data_Parser.Models
         public LuaModel? Parent { get; private set; }
 
         public string? Value { get; set; }
+
+        public LuaModel this[string key] => Children.FirstOrDefault(x => x.Key == key);
 
         public void AddChild(LuaModel child)
         {

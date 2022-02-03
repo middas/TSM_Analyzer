@@ -1,20 +1,14 @@
 ﻿using SharpCompress.Archives;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using TSM.Core.Models;
 using TSM.Logic.Data_Parser.Exceptions;
-using TSM.Logic.Data_Parser.Models;
 
 namespace TSM.Logic.Data_Parser
 {
     public class TsmBackupParser
     {
-        private const string ZipExtension = ".zip";
-        private const string LuaFileExtension = ".lua";
         private const string DefaultLuaBackupFileName = "TradeSkillMaster.lua";
+        private const string LuaFileExtension = ".lua";
+        private const string ZipExtension = ".zip";
 
         public async Task<BackupModel> ParseBackup(FileInfo backupPath)
         {
@@ -37,7 +31,7 @@ namespace TSM.Logic.Data_Parser
                 Directory.Delete(backupPath.Directory.FullName, true);
             }
 
-            BackupModel backupModel = new();
+            BackupModel backupModel = new(luaModel);
             return backupModel;
         }
 
