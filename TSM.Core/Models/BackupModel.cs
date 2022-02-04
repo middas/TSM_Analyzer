@@ -19,13 +19,17 @@ namespace TSM.Core.Models
             PopulateData();
         }
 
+        public ImmutableArray<AuctionBuyModel> AuctionBuys { get; private set; }
+
         public ImmutableArray<CancelledAuctionModel> CancelledAuctions { get; private set; }
 
         public ImmutableArray<Character> Characters { get; private set; }
 
         public ImmutableArray<CharacterSaleModel> CharacterSaleModels { get; private set; }
 
-        private Dictionary<string, int> ParseItems(ImmutableList<LuaModel> children)
+        public ImmutableArray<ExpiredAuctionModel> ExpiredAuctions { get; private set; }
+
+        private static Dictionary<string, int> ParseItems(IEnumerable<LuaModel> children)
         {
             if (children == null) return new Dictionary<string, int>();
 
@@ -35,6 +39,27 @@ namespace TSM.Core.Models
         private void PopulateAuctionBuys()
         {
             //r@Korialstrasz@internalData@csvBuys
+            List<AuctionBuyModel> auctionBuyModels = new();
+            LuaModel data = backingLuaModel[TradeSkillData];
+
+            foreach (var lm in data.Children.Where(x => x.Key.EndsWith("csvBuys")))
+            {
+                using MemoryStream memoryStream = new();
+                using (StreamWriter streamWriter = new(memoryStream, leaveOpen: true))
+                {
+                    streamWriter.Write(lm.Value.Replace("\\n", "\n"));
+                    streamWriter.Flush();
+                }
+                memoryStream.Position = 0;
+
+                using TextReader textReader = new StreamReader(memoryStream);
+                using CsvReader csvReader = new(textReader, CultureInfo.CurrentCulture);
+
+                var entries = csvReader.GetRecords<AuctionBuyModel>();
+                auctionBuyModels.AddRange(entries);
+            }
+
+            AuctionBuys = auctionBuyModels.ToImmutableArray();
         }
 
         private void PopulateAuctionData()
@@ -78,7 +103,7 @@ namespace TSM.Core.Models
         private void PopulateCharacterData()
         {
             const string characterRexex = @"s@(?<name>[A-Za-z]+) - (?<faction>[A-Za-z]+) - (?<realm>[A-Za-z]+)@internalData@(?<type>[A-Za-z]+)";
-            HashSet<Character> characters = new HashSet<Character>();
+            HashSet<Character> characters = new();
             LuaModel data = backingLuaModel[TradeSkillData];
 
             if (data == null) throw new InvalidBackupException("Not a valid backup file.");
@@ -173,6 +198,27 @@ namespace TSM.Core.Models
         private void PopulateExpiredAuctions()
         {
             //r@Korialstrasz@internalData@csvExpired
+            List<ExpiredAuctionModel> expiredAuctions = new();
+            LuaModel data = backingLuaModel[TradeSkillData];
+
+            foreach (var lm in data.Children.Where(x => x.Key.EndsWith("csvExpired")))
+            {
+                using MemoryStream memoryStream = new();
+                using (StreamWriter streamWriter = new(memoryStream, leaveOpen: true))
+                {
+                    streamWriter.Write(lm.Value.Replace("\\n", "\n"));
+                    streamWriter.Flush();
+                }
+                memoryStream.Position = 0;
+
+                using TextReader textReader = new StreamReader(memoryStream);
+                using CsvReader csvReader = new(textReader, CultureInfo.CurrentCulture);
+
+                var entries = csvReader.GetRecords<ExpiredAuctionModel>();
+                expiredAuctions.AddRange(entries);
+            }
+
+            ExpiredAuctions = expiredAuctions.ToImmutableArray();
         }
     }
 }
