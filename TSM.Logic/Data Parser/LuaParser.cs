@@ -53,7 +53,12 @@ namespace TSM.Logic.Data_Parser
                                 currentLuaModel = lm;
                             }
 
-                            currentLuaModel.Key = (tempValue.Length == 0 ? data[0..nextOperatorIndex] : tempValue.ToString()).Trim(new char[] { ' ', '[', ']', '"' });
+                            currentLuaModel.Key = (tempValue.Length == 0 ? data[0..nextOperatorIndex] : tempValue.ToString() + data[0..nextOperatorIndex]).Trim(new char[] { ' ', '[', ']', '"' });
+
+                            //if(currentLuaModel.Key == "r@Korialstrasz@internalData@csvCancelled")
+                            //{
+                            //    System.Diagnostics.Debugger.Break();
+                            //}
 
                             tempValue.Clear();
                             break;
@@ -61,7 +66,7 @@ namespace TSM.Logic.Data_Parser
                         case ',':
                             if (!openQuote)
                             {
-                                string value = (tempValue.Length == 0 ? data[0..nextOperatorIndex] : tempValue.ToString()).Trim(new char[] { '\r', '\n', ' ', '{', '}' });
+                                string value = (tempValue.Length == 0 ? data[0..nextOperatorIndex] : tempValue.ToString() + data[0..nextOperatorIndex]).Trim(new char[] { '\r', '\n', ' ', '{', '}' });
                                 tempValue.Clear();
                                 if (!string.IsNullOrEmpty(value))
                                 {
@@ -71,6 +76,10 @@ namespace TSM.Logic.Data_Parser
                                 LuaModel lm = new();
                                 currentLuaModel.Parent.AddChild(lm);
                                 currentLuaModel = lm;
+                            }
+                            else
+                            {
+                                tempValue.Append(data);
                             }
                             break;
 

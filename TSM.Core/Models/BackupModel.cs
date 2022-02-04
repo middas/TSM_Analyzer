@@ -1,10 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using CsvHelper;
 using System.Collections.Immutable;
-using System.Linq;
-using System.Text;
+using System.Globalization;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 using TSM.Core.Exceptions;
 
 namespace TSM.Core.Models
@@ -15,8 +12,6 @@ namespace TSM.Core.Models
 
         private readonly LuaModel backingLuaModel;
 
-        public Character[] Characters { get; set; }
-
         public BackupModel(LuaModel luaModel)
         {
             backingLuaModel = luaModel;
@@ -24,17 +19,60 @@ namespace TSM.Core.Models
             PopulateData();
         }
 
-        private void PopulateData()
+        public ImmutableArray<CancelledAuctionModel> CancelledAuctions { get; private set; }
+
+        public ImmutableArray<Character> Characters { get; private set; }
+
+        public ImmutableArray<CharacterSaleModel> CharacterSaleModels { get; private set; }
+
+        private Dictionary<string, int> ParseItems(ImmutableList<LuaModel> children)
         {
-            PopulateCharacterData();
-            //c@Mugaelai - Korialstrasz@internalData@auctionSaleHints
-            //r@Korialstrasz@internalData@csvExpired
+            if (children == null) return new Dictionary<string, int>();
+
+            return children.Select(c => new { c.Key, c.Value }).ToDictionary(x => x.Key, x => int.Parse(x.Value));
+        }
+
+        private void PopulateAuctionBuys()
+        {
+            //r@Korialstrasz@internalData@csvBuys
+        }
+
+        private void PopulateAuctionData()
+        {
             //r@Korialstrasz@internalData@csvSales
             //c@Mugaelai - Korialstrasz@internalData@auctionMessages
-            //r@Korialstrasz@internalData@csvBuys
             //r@Korialstrasz@internalData@csvExpense
             //c@Mugaelai - Korialstrasz@internalData@auctionPrices
+            PopulateCharacterSales();
+            PopulateExpiredAuctions();
+            PopulateAuctionBuys();
+            PopulateCancelledAuctions();
+        }
+
+        private void PopulateCancelledAuctions()
+        {
             //r@Korialstrasz@internalData@csvCancelled
+            List<CancelledAuctionModel> cancelledAuctionModels = new();
+            LuaModel data = backingLuaModel[TradeSkillData];
+
+            foreach (var lm in data.Children.Where(x => x.Key.EndsWith("csvCancelled")))
+            {
+                using MemoryStream memoryStream = new();
+                using (StreamWriter streamWriter = new(memoryStream, leaveOpen: true))
+                {
+                    streamWriter.Write(lm.Value.Replace("\\n", "\n"));
+                    streamWriter.Flush();
+                }
+                memoryStream.Position = 0;
+
+                using TextReader textReader = new StreamReader(memoryStream);
+                using CsvReader csvReader = new(textReader, CultureInfo.CurrentCulture);
+
+                var entries = csvReader.GetRecords<CancelledAuctionModel>();
+                cancelledAuctionModels.AddRange(entries);
+            }
+
+            CancelledAuctions = cancelledAuctionModels.ToImmutableArray();
         }
 
         private void PopulateCharacterData()
@@ -62,24 +100,31 @@ namespace TSM.Core.Models
                         case "goldLogLastUpdate":
                             character.GoldLogLastUpdate = DateTimeOffset.FromUnixTimeSeconds(long.Parse(characterLuaModel.Value));
                             break;
+
                         case "money":
                             character.Money = new Money(long.Parse(characterLuaModel.Value));
                             break;
+
                         case "mailQuantity":
                             character.MailItems = ParseItems(characterLuaModel.Children);
                             break;
+
                         case "reagentBankQuantity":
                             character.ReagentItems = ParseItems(characterLuaModel.Children);
                             break;
+
                         case "auctionQuantity":
                             character.AuctionItems = ParseItems(characterLuaModel.Children);
                             break;
+
                         case "classKey":
                             character.Class = characterLuaModel.Value;
                             break;
+
                         case "bagQuantity":
                             character.BagItems = ParseItems(characterLuaModel.Children);
                             break;
+
                         case "bankQuantity":
                             character.BankItems = ParseItems(characterLuaModel.Children);
                             break;
@@ -87,14 +132,47 @@ namespace TSM.Core.Models
                 }
             }
 
-            Characters = characters.ToArray();
+            Characters = characters.ToImmutableArray();
         }
 
-        private Dictionary<string, int> ParseItems(ImmutableList<LuaModel> children)
+        private void PopulateCharacterSales()
         {
-            if (children == null) return new Dictionary<string, int>();
+            //c@Mugaelai - Korialstrasz@internalData@auctionSaleHints
+            const char separator = '\u0001';
 
-            return children.Select(c => new { c.Key, c.Value }).ToDictionary(x => x.Key, x => int.Parse(x.Value));
+            List<CharacterSaleModel> characterSaleModels = new();
+            LuaModel data = backingLuaModel[TradeSkillData];
+
+            foreach (LuaModel lm in data.Children.Where(x => x.Key.EndsWith("auctionSaleHints")))
+            {
+                var character = Characters.Single(c => c.Name == lm.Key[2..(lm.Key.IndexOf(' '))]);
+                foreach (var sale in lm.Children)
+                {
+                    string[] keySplit = sale.Key.Split(separator);
+                    characterSaleModels.Add(new CharacterSaleModel
+                    {
+                        Character = character,
+                        ItemName = keySplit[0],
+                        ItemID = keySplit[1],
+                        Count = int.Parse(keySplit[2]),
+                        SoldValue = new Money(long.Parse(keySplit[3])),
+                        TimeOfSale = DateTimeOffset.FromUnixTimeSeconds(long.Parse(sale.Value))
+                    });
+                }
+            }
+
+            CharacterSaleModels = characterSaleModels.ToImmutableArray();
+        }
+
+        private void PopulateData()
+        {
+            PopulateCharacterData();
+            PopulateAuctionData();
+        }
+
+        private void PopulateExpiredAuctions()
+        {
+            //r@Korialstrasz@internalData@csvExpired
         }
     }
 }
