@@ -29,6 +29,22 @@ namespace TSM.Core.Models
 
         public ImmutableArray<ExpiredAuctionModel> ExpiredAuctions { get; private set; }
 
+        private static IEnumerable<T> ParseCsv<T>(LuaModel lm)
+        {
+            using MemoryStream memoryStream = new();
+            using (StreamWriter streamWriter = new(memoryStream, leaveOpen: true))
+            {
+                streamWriter.Write(lm.Value.Replace("\\n", "\n"));
+                streamWriter.Flush();
+            }
+            memoryStream.Position = 0;
+
+            using TextReader textReader = new StreamReader(memoryStream);
+            using CsvReader csvReader = new(textReader, CultureInfo.CurrentCulture);
+
+            return csvReader.GetRecords<T>().ToArray();
+        }
+
         private static Dictionary<string, int> ParseItems(IEnumerable<LuaModel> children)
         {
             if (children == null) return new Dictionary<string, int>();
@@ -44,19 +60,7 @@ namespace TSM.Core.Models
 
             foreach (var lm in data.Children.Where(x => x.Key.EndsWith("csvBuys")))
             {
-                using MemoryStream memoryStream = new();
-                using (StreamWriter streamWriter = new(memoryStream, leaveOpen: true))
-                {
-                    streamWriter.Write(lm.Value.Replace("\\n", "\n"));
-                    streamWriter.Flush();
-                }
-                memoryStream.Position = 0;
-
-                using TextReader textReader = new StreamReader(memoryStream);
-                using CsvReader csvReader = new(textReader, CultureInfo.CurrentCulture);
-
-                var entries = csvReader.GetRecords<AuctionBuyModel>();
-                auctionBuyModels.AddRange(entries);
+                auctionBuyModels.AddRange(ParseCsv<AuctionBuyModel>(lm));
             }
 
             AuctionBuys = auctionBuyModels.ToImmutableArray();
@@ -82,19 +86,7 @@ namespace TSM.Core.Models
 
             foreach (var lm in data.Children.Where(x => x.Key.EndsWith("csvCancelled")))
             {
-                using MemoryStream memoryStream = new();
-                using (StreamWriter streamWriter = new(memoryStream, leaveOpen: true))
-                {
-                    streamWriter.Write(lm.Value.Replace("\\n", "\n"));
-                    streamWriter.Flush();
-                }
-                memoryStream.Position = 0;
-
-                using TextReader textReader = new StreamReader(memoryStream);
-                using CsvReader csvReader = new(textReader, CultureInfo.CurrentCulture);
-
-                var entries = csvReader.GetRecords<CancelledAuctionModel>();
-                cancelledAuctionModels.AddRange(entries);
+                cancelledAuctionModels.AddRange(ParseCsv<CancelledAuctionModel>(lm));
             }
 
             CancelledAuctions = cancelledAuctionModels.ToImmutableArray();
@@ -203,19 +195,7 @@ namespace TSM.Core.Models
 
             foreach (var lm in data.Children.Where(x => x.Key.EndsWith("csvExpired")))
             {
-                using MemoryStream memoryStream = new();
-                using (StreamWriter streamWriter = new(memoryStream, leaveOpen: true))
-                {
-                    streamWriter.Write(lm.Value.Replace("\\n", "\n"));
-                    streamWriter.Flush();
-                }
-                memoryStream.Position = 0;
-
-                using TextReader textReader = new StreamReader(memoryStream);
-                using CsvReader csvReader = new(textReader, CultureInfo.CurrentCulture);
-
-                var entries = csvReader.GetRecords<ExpiredAuctionModel>();
-                expiredAuctions.AddRange(entries);
+                expiredAuctions.AddRange(ParseCsv<ExpiredAuctionModel>(lm));
             }
 
             ExpiredAuctions = expiredAuctions.ToImmutableArray();
