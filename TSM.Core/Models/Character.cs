@@ -8,6 +8,13 @@
 
     public class Character
     {
+        public Character(string name, Faction faction, string realm)
+        {
+            Name = name ?? throw new ArgumentNullException(nameof(name));
+            Faction = faction;
+            Realm = realm ?? throw new ArgumentNullException(nameof(realm));
+        }
+
         public Dictionary<string, int> AuctionItems { get; set; } = new Dictionary<string, int>();
 
         public Dictionary<string, int> BagItems { get; set; } = new Dictionary<string, int>();
@@ -29,13 +36,6 @@
         public Dictionary<string, int> ReagentItems { get; set; } = new Dictionary<string, int>();
 
         public string Realm { get; set; }
-
-        public Character(string name, Faction faction, string realm)
-        {
-            Name = name ?? throw new ArgumentNullException(nameof(name));
-            Faction = faction;
-            Realm = realm ?? throw new ArgumentNullException(nameof(realm));
-        }
 
         public override bool Equals(object? obj)
         {
