@@ -15,5 +15,7 @@ namespace TSM.Core.LocalStorage
         Task StoreCharacterSales(IEnumerable<CharacterSaleModel> characterSaleModels);
 
         Task StoreExpiredAuctions(IEnumerable<ExpiredAuctionModel> expiredAuctionModels);
+
+        Task StoreBackupScanned(FileInfo backupFile, DateTimeOffset startTime);
     }
 }

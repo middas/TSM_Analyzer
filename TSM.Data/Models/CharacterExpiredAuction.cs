@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace TSM.Data.Models
 {
     [Table(nameof(CharacterExpiredAuction))]
-    public class CharacterExpiredAuction
+    internal class CharacterExpiredAuction
     {
         public virtual Character Character { get; set; }
 

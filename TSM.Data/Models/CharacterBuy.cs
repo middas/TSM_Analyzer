@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace TSM.Data.Models
 {
     [Table(nameof(CharacterBuy))]
-    public class CharacterBuy
+    internal class CharacterBuy
     {
         [Required]
         public DateTime BoughtTime { get; set; }

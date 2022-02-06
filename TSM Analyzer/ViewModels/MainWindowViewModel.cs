@@ -1,9 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.ComponentModel;
-using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using TSM.Core.LocalStorage;
@@ -16,29 +13,31 @@ namespace TSM_Analyzer.ViewModels
     {
         private readonly IDataStore dataStore;
 
+        public MainWindowViewModel(IDataStore dataStore)
+        {
+            this.dataStore = dataStore;
+        }
+
         public event PropertyChangedEventHandler? PropertyChanged;
 
         public ICommand ScanBackupsCommand => new RelayCommand(() => ScanBackups());
 
-        public MainWindowViewModel(IDataStore dataStore)
+        private void FirePropertyChanged([CallerMemberName] string property = "")
         {
-            this.dataStore = dataStore;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(property));
         }
 
         private async Task ScanBackups()
         {
             var backup = await TsmBackupParser.ParseBackup(new System.IO.FileInfo(@"C:\Users\justi\AppData\Roaming\TradeSkillMaster\TSMApplication\Backups\SILEDORF_1644093144.zip"));
 
+            DateTimeOffset startTime = DateTimeOffset.Now;
             await dataStore.StoreCharacters(backup.Characters);
             await dataStore.StoreAuctionBuys(backup.AuctionBuys);
             await dataStore.StoreCharacterSales(backup.CharacterSaleModels);
             await dataStore.StoreExpiredAuctions(backup.ExpiredAuctions);
             await dataStore.StoreCancelledAuctions(backup.CancelledAuctions);
-        }
-
-        private void FirePropertyChanged([CallerMemberName] string property = "")
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(property));
+            await dataStore.StoreBackupScanned(new System.IO.FileInfo(@"C:\Users\justi\AppData\Roaming\TradeSkillMaster\TSMApplication\Backups\SILEDORF_1644093144.zip"), startTime);
         }
     }
 }

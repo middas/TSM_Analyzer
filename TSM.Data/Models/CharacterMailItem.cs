@@ -3,8 +3,8 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace TSM.Data.Models
 {
-    [Table(nameof(CharacterInventory))]
-    internal class CharacterInventory
+    [Table(nameof(CharacterMailItem))]
+    internal class CharacterMailItem
     {
         public virtual Character Character { get; set; }
 
@@ -15,13 +15,13 @@ namespace TSM.Data.Models
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         [Required]
-        public int CharacterInventoryID { get; set; }
+        public int CharacterMailItemID { get; set; }
+
+        [Required]
+        public int Count { get; set; }
 
         [Required]
         [MaxLength(255)]
         public string ItemID { get; set; }
-
-        [Required]
-        public int Quantity { get; set; }
     }
 }

@@ -50,6 +50,18 @@ namespace TSM.Data
             await dbContext.SaveChangesAsync();
         }
 
+        public async Task StoreBackupScanned(FileInfo backupFile, DateTimeOffset startTime)
+        {
+            await dbContext.ScannedBackups.AddAsync(new ScannedBackup
+            {
+                BackupPath = backupFile.FullName,
+                ScannedTime = startTime.UtcDateTime,
+                Duration = DateTimeOffset.Now.Subtract(startTime).TotalSeconds
+            });
+
+            await dbContext.SaveChangesAsync();
+        }
+
         public async Task StoreCancelledAuctions(IEnumerable<core.CancelledAuctionModel> cancelledAuctionModels)
         {
             Character[] characters = dbContext.Characters.ToArray();
@@ -83,7 +95,9 @@ namespace TSM.Data
         {
             foreach (var character in characters)
             {
-                Character storeCharacter = await dbContext.Characters.SingleOrDefaultAsync(c => c.Name == character.Name && c.Faction == character.Faction.ToString() && c.Realm == character.Realm);
+                Character storeCharacter = await dbContext.Characters.Include(c => c.CharacterReagents).Include(c => c.CharacterBankItems)
+                    .Include(c => c.CharacterInventoryItems).Include(c => c.CharacterMailItems).SingleOrDefaultAsync(c => c.Name == character.Name
+                        && c.Faction == character.Faction.ToString() && c.Realm == character.Realm);
 
                 if (storeCharacter == null)
                 {
@@ -92,13 +106,21 @@ namespace TSM.Data
                         Class = character.Class,
                         Name = character.Name,
                         Faction = character.Faction.ToString(),
-                        Realm = character.Realm
+                        Realm = character.Realm,
+                        CharacterBankItems = new List<CharacterBank>(),
+                        CharacterInventoryItems = new List<CharacterInventory>(),
+                        CharacterReagents = new List<CharacterReagent>(),
+                        CharacterMailItems = new List<CharacterMailItem>()
                     };
 
                     await dbContext.AddAsync(storeCharacter);
                 }
 
                 storeCharacter.Copper = character.Money.TotalCopper;
+                SetCharacterBank(storeCharacter.CharacterBankItems, character.BankItems);
+                SetCharacterReagents(storeCharacter.CharacterReagents, character.ReagentItems);
+                SetCharacterInventory(storeCharacter.CharacterInventoryItems, character.BagItems);
+                SetCharacterMail(storeCharacter.CharacterMailItems, character.MailItems);
             }
             await dbContext.SaveChangesAsync();
         }
@@ -159,6 +181,62 @@ namespace TSM.Data
             }
 
             await dbContext.SaveChangesAsync();
+        }
+
+        private void SetCharacterBank(ICollection<CharacterBank> characterBankItems, Dictionary<string, int> bankItems)
+        {
+            characterBankItems.Clear();
+
+            foreach (var kvp in bankItems)
+            {
+                characterBankItems.Add(new CharacterBank
+                {
+                    ItemID = kvp.Key,
+                    Quantity = kvp.Value
+                });
+            }
+        }
+
+        private void SetCharacterInventory(ICollection<CharacterInventory> characterInventoryItems, Dictionary<string, int> bagItems)
+        {
+            characterInventoryItems.Clear();
+
+            foreach (var kvp in bagItems)
+            {
+                characterInventoryItems.Add(new CharacterInventory
+                {
+                    ItemID = kvp.Key,
+                    Quantity = kvp.Value
+                });
+            }
+        }
+
+        private void SetCharacterMail(ICollection<CharacterMailItem> characterMailItems, Dictionary<string, int> mailItems)
+        {
+            characterMailItems.Clear();
+
+            foreach (var mailItem in mailItems)
+            {
+                characterMailItems.Add(new CharacterMailItem
+                {
+                    ItemID = mailItem.Key,
+                    Count = mailItem.Value
+                });
+            }
+        }
+
+        private void SetCharacterReagents(ICollection<CharacterReagent> characterReagents, Dictionary<string, int> reagentItems)
+        {
+            characterReagents.Clear();
+
+            foreach (var kvp in reagentItems)
+            {
+                characterReagents.Add(new CharacterReagent
+                {
+                    ItemID = kvp.Key,
+                    Quantity = kvp.Value
+                });
+            }
         }
     }
 }

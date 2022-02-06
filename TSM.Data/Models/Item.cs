@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace TSM.Data.Models
 {
     [Table(nameof(Item))]
-    public class Item
+    internal class Item
     {
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.None)]

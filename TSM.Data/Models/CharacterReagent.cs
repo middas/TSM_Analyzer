@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace TSM.Data.Models
 {
     [Table(nameof(CharacterReagent))]
-    public class CharacterReagent
+    internal class CharacterReagent
     {
         public virtual Character Character { get; set; }
 

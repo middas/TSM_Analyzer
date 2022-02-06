@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace TSM.Data.Models
 {
     [Table(nameof(Character))]
-    public class Character
+    internal class Character
     {
         public virtual ICollection<CharacterAuctionSale> CharacterAuctionSales { get; set; }
 
@@ -22,6 +22,8 @@ namespace TSM.Data.Models
         public int CharacterID { get; set; }
 
         public virtual ICollection<CharacterInventory> CharacterInventoryItems { get; set; }
+
+        public virtual ICollection<CharacterMailItem> CharacterMailItems { get; set; }
 
         public virtual ICollection<CharacterReagent> CharacterReagents { get; set; }
 

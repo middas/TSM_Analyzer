@@ -13,22 +13,26 @@ namespace TSM.Data
         {
         }
 
-        public DbSet<CharacterAuctionSale> CharacterAuctionSales { get; set; }
+        internal DbSet<CharacterAuctionSale> CharacterAuctionSales { get; set; }
 
-        public DbSet<CharacterBank> CharacterBanks { get; set; }
+        internal DbSet<CharacterBank> CharacterBanks { get; set; }
 
-        public DbSet<CharacterBuy> CharacterBuys { get; set; }
+        internal DbSet<CharacterBuy> CharacterBuys { get; set; }
 
-        public DbSet<CharacterCancelledAuction> CharacterCancelledAuctions { get; set; }
+        internal DbSet<CharacterCancelledAuction> CharacterCancelledAuctions { get; set; }
 
-        public DbSet<CharacterExpiredAuction> CharacterExpiredAuctions { get; set; }
+        internal DbSet<CharacterExpiredAuction> CharacterExpiredAuctions { get; set; }
 
-        public DbSet<CharacterInventory> CharacterInventories { get; set; }
+        internal DbSet<CharacterInventory> CharacterInventories { get; set; }
 
-        public DbSet<CharacterReagent> CharacterReagents { get; set; }
+        internal DbSet<CharacterMailItem> CharacterMailItems { get; set; }
 
-        public DbSet<Character> Characters { get; set; }
+        internal DbSet<CharacterReagent> CharacterReagents { get; set; }
 
-        public DbSet<Item> Items { get; set; }
+        internal DbSet<Character> Characters { get; set; }
+
+        internal DbSet<Item> Items { get; set; }
+
+        internal DbSet<ScannedBackup> ScannedBackups { get; set; }
     }
 }
