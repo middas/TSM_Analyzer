@@ -19,6 +19,8 @@ namespace TSM.Data
 
         public DbSet<CharacterBuy> CharacterBuys { get; set; }
 
+        public DbSet<CharacterCancelledAuction> CharacterCancelledAuctions { get; set; }
+
         public DbSet<CharacterExpiredAuction> CharacterExpiredAuctions { get; set; }
 
         public DbSet<CharacterInventory> CharacterInventories { get; set; }

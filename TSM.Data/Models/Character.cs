@@ -12,6 +12,8 @@ namespace TSM.Data.Models
 
         public virtual ICollection<CharacterBuy> CharacterBuys { get; set; }
 
+        public virtual ICollection<CharacterCancelledAuction> CharacterCancelledAuctions { get; set; }
+
         public virtual ICollection<CharacterExpiredAuction> CharacterExpiredAuctions { get; set; }
 
         [Key]

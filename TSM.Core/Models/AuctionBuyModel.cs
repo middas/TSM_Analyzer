@@ -14,6 +14,9 @@ namespace TSM.Core.Models
         [Name("otherPlayer")]
         public string OtherPlayer { get; set; }
 
+        [Name("player")]
+        public string Player { get; set; }
+
         [Name("price")]
         public long Price { get; set; }
 

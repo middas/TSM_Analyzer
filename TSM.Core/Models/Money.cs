@@ -19,6 +19,8 @@
 
         public int Silver { get; set; } = 0;
 
+        public long TotalCopper => totalCopper;
+
         public override string ToString()
         {
             return $"{Gold}g{Silver}s{Copper}c";

@@ -10,7 +10,7 @@ namespace TSM.Logic.Data_Parser
         private const string LuaFileExtension = ".lua";
         private const string ZipExtension = ".zip";
 
-        public async Task<BackupModel> ParseBackup(FileInfo backupPath)
+        public static async Task<BackupModel> ParseBackup(FileInfo backupPath)
         {
             if (backupPath == null) throw new ArgumentNullException(nameof(backupPath));
             if (!backupPath.Exists) throw new FileNotFoundException();
@@ -35,7 +35,7 @@ namespace TSM.Logic.Data_Parser
             return backupModel;
         }
 
-        private async Task<FileInfo> ExtractBackupZipContents(FileInfo backupPath)
+        private static async Task<FileInfo> ExtractBackupZipContents(FileInfo backupPath)
         {
             try
             {

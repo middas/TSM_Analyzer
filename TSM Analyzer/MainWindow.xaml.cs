@@ -1,4 +1,6 @@
 ﻿using System.Windows;
+using TSM.Core.LocalStorage;
+using TSM_Analyzer.ViewModels;
 
 namespace TSM_Analyzer
 {
@@ -7,9 +9,13 @@ namespace TSM_Analyzer
     /// </summary>
     public partial class MainWindow : Window
     {
-        public MainWindow()
+        private MainWindowViewModel viewModel;
+
+        public MainWindow(IDataStore dataStore)
         {
             InitializeComponent();
+
+            DataContext = viewModel = new MainWindowViewModel(dataStore);
         }
     }
 }
