@@ -10,8 +10,6 @@ namespace TSM_Analyzer
         public MainWindow()
         {
             InitializeComponent();
-
-            new TSM.Logic.Data_Parser.TsmBackupParser().ParseBackup(new System.IO.FileInfo(@"C:\Users\justi\AppData\Roaming\TradeSkillMaster\TSMApplication\Backups\SILEDORF_1643701576.zip"));
         }
     }
 }

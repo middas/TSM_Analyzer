@@ -29,6 +29,15 @@ namespace TSM_Analyzer
         private void ConfigureServices(ServiceCollection services)
         {
             services.ConfigureTSMLogic();
+            services.AddSingleton<MainWindow>();
+        }
+
+        protected override void OnStartup(StartupEventArgs e)
+        {
+            base.OnStartup(e);
+
+            var mainWindow = serviceProvider.GetService<MainWindow>();
+            mainWindow.Show();
         }
     }
 }
