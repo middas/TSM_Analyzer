@@ -1,22 +1,39 @@
-﻿namespace TSM.Core.Models
+﻿using CsvHelper.Configuration.Attributes;
+
+namespace TSM.Core.Models
 {
     public class CharacterSaleModel
     {
-        public Character Character { get; set; }
+        [Name("player")]
+        public string Character { get; set; }
 
-        public int Count { get; set; }
-
+        [Name("itemString")]
         public string ItemID { get; set; }
 
-        public string ItemName { get; set; }
+        [Ignore]
+        public Money Money => new(Price);
 
-        public Money SoldValue { get; set; }
+        [Name("price")]
+        public long Price { get; set; }
 
-        public DateTimeOffset TimeOfSale { get; set; }
+        [Name("quantity")]
+        public int Quantity { get; set; }
+
+        [Name("source")]
+        public string Source { get; set; }
+
+        [Name("stackSize")]
+        public int StackSize { get; set; }
+
+        [Name("time")]
+        public long Time { get; set; }
+
+        [Ignore]
+        public DateTimeOffset TimeOfSale => DateTimeOffset.FromUnixTimeSeconds(Time);
 
         public override string ToString()
         {
-            return $"{Character.Name} - {ItemName} - {SoldValue}";
+            return $"{Character} - {ItemID} - {Money}";
         }
     }
 }

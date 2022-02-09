@@ -21,9 +21,13 @@
 
         public long TotalCopper => totalCopper;
 
+        public static Money operator -(Money a, Money b) => new(a.TotalCopper - b.TotalCopper);
+
+        public static Money operator +(Money a, Money b) => new(a.TotalCopper + b.totalCopper);
+
         public override string ToString()
         {
-            return $"{Gold}g{Silver}s{Copper}c";
+            return $"{$"{Gold:n0}"}g{Silver}s{Copper}c";
         }
     }
 }

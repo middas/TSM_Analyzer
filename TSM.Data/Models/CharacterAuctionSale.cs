@@ -28,6 +28,13 @@ namespace TSM.Data.Models
         public int Quantity { get; set; }
 
         [Required]
+        [MaxLength(255)]
+        public string Source { get; set; }
+
+        [Required]
+        public int StackSize { get; set; }
+
+        [Required]
         public DateTime TimeOfSale { get; set; }
     }
 }

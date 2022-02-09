@@ -19,6 +19,59 @@ namespace TSM.Data
             dbContext.Database.Migrate();
         }
 
+        public async Task<IEnumerable<core.AuctionBuyModel>> GetAuctionBuyModels()
+        {
+            var storeCharacterBuys = await dbContext.CharacterBuys.ToArrayAsync();
+
+            return storeCharacterBuys.Select(x => new core.AuctionBuyModel
+            {
+                ItemId = x.ItemID,
+                Price = x.Copper,
+                Player = x.Character.Name,
+                Quantity = x.Quantity,
+                Source = x.Source,
+                StackSize = x.StackSize,
+                TimeEpoch = new DateTimeOffset(x.BoughtTime.Ticks, TimeSpan.Zero).ToUnixTimeSeconds()
+            }).ToArray();
+        }
+
+        public async Task<string[]> GetBackupsScanned()
+        {
+            return await dbContext.ScannedBackups.Select(b => b.BackupPath).ToArrayAsync();
+        }
+
+        public async Task<IEnumerable<core.CharacterSaleModel>> GetCharacterSaleModels()
+        {
+            var storeSales = await dbContext.CharacterAuctionSales.ToArrayAsync();
+
+            return storeSales.Select(x => new core.CharacterSaleModel
+            {
+                Character = x.Character.Name,
+                Quantity = x.Quantity,
+                ItemID = x.ItemID,
+                Price = x.Copper,
+                Time = new DateTimeOffset(x.TimeOfSale.Ticks, TimeSpan.Zero).ToUnixTimeSeconds(),
+                Source = x.Source,
+                StackSize = x.StackSize,
+            });
+        }
+
+        public async Task<IEnumerable<core.Character>> GetCharactersData()
+        {
+            var storeCharacters = await dbContext.Characters.Include(c => c.CharacterMailItems).Include(c => c.CharacterBankItems)
+                .Include(c => c.CharacterReagents).Include(c => c.CharacterInventoryItems).ToArrayAsync();
+
+            return storeCharacters.Select(c => new core.Character(c.Name, Enum.Parse<core.Faction>(c.Faction), c.Realm)
+            {
+                BagItems = c.CharacterInventoryItems.ToDictionary(x => x.ItemID, x => x.Quantity),
+                BankItems = c.CharacterBankItems.ToDictionary(x => x.ItemID, x => x.Quantity),
+                Class = c.Class,
+                MailItems = c.CharacterMailItems.ToDictionary(x => x.ItemID, x => x.Count),
+                Money = new core.Money(c.Copper),
+                ReagentItems = c.CharacterReagents.ToDictionary(x => x.ItemID, x => x.Quantity)
+            }).ToArray();
+        }
+
         public async Task StoreAuctionBuys(IEnumerable<core.AuctionBuyModel> auctionBuyModels)
         {
             Character[] characters = dbContext.Characters.ToArray();
@@ -64,31 +117,34 @@ namespace TSM.Data
 
         public async Task StoreCancelledAuctions(IEnumerable<core.CancelledAuctionModel> cancelledAuctionModels)
         {
-            Character[] characters = dbContext.Characters.ToArray();
-            var characterCancelledAuctions = dbContext.CharacterCancelledAuctions.AsEnumerable().Where(x =>
-                x.CancelledTime >= cancelledAuctionModels.Min(y => y.Time.UtcDateTime) && x.CancelledTime <= cancelledAuctionModels.Max(y => y.Time.UtcDateTime)).ToArray();
-
-            foreach (var cancelledAuctionModel in cancelledAuctionModels)
+            if (cancelledAuctionModels != null && cancelledAuctionModels.Any())
             {
-                CharacterCancelledAuction storeCharacterCancelledAuction = characterCancelledAuctions.FirstOrDefault(x => x.ItemID == cancelledAuctionModel.ItemId
-                    && x.CancelledTime == cancelledAuctionModel.Time.UtcDateTime);
+                Character[] characters = dbContext.Characters.ToArray();
+                var characterCancelledAuctions = dbContext.CharacterCancelledAuctions.AsEnumerable().Where(x =>
+                    x.CancelledTime >= cancelledAuctionModels.Min(y => y.Time.UtcDateTime) && x.CancelledTime <= cancelledAuctionModels.Max(y => y.Time.UtcDateTime)).ToArray();
 
-                if (storeCharacterCancelledAuction == null)
+                foreach (var cancelledAuctionModel in cancelledAuctionModels)
                 {
-                    storeCharacterCancelledAuction = new()
+                    CharacterCancelledAuction storeCharacterCancelledAuction = characterCancelledAuctions.FirstOrDefault(x => x.ItemID == cancelledAuctionModel.ItemId
+                        && x.CancelledTime == cancelledAuctionModel.Time.UtcDateTime);
+
+                    if (storeCharacterCancelledAuction == null)
                     {
-                        CancelledTime = cancelledAuctionModel.Time.UtcDateTime,
-                        Character = characters.Single(c => c.Name == cancelledAuctionModel.PlayerName),
-                        ItemID = cancelledAuctionModel.ItemId,
-                        Quantity = cancelledAuctionModel.Quantity,
-                        StackSize = cancelledAuctionModel.StackSize
-                    };
+                        storeCharacterCancelledAuction = new()
+                        {
+                            CancelledTime = cancelledAuctionModel.Time.UtcDateTime,
+                            Character = characters.Single(c => c.Name == cancelledAuctionModel.PlayerName),
+                            ItemID = cancelledAuctionModel.ItemId,
+                            Quantity = cancelledAuctionModel.Quantity,
+                            StackSize = cancelledAuctionModel.StackSize
+                        };
 
-                    await dbContext.AddAsync(storeCharacterCancelledAuction);
+                        await dbContext.AddAsync(storeCharacterCancelledAuction);
+                    }
                 }
-            }
 
-            await dbContext.SaveChangesAsync();
+                await dbContext.SaveChangesAsync();
+            }
         }
 
         public async Task StoreCharacters(IEnumerable<core.Character> characters)
@@ -121,6 +177,7 @@ namespace TSM.Data
                 SetCharacterReagents(storeCharacter.CharacterReagents, character.ReagentItems);
                 SetCharacterInventory(storeCharacter.CharacterInventoryItems, character.BagItems);
                 SetCharacterMail(storeCharacter.CharacterMailItems, character.MailItems);
+                storeCharacter.LastUpdateTime = character.GoldLogLastUpdate.UtcDateTime;
             }
             await dbContext.SaveChangesAsync();
         }
@@ -134,17 +191,20 @@ namespace TSM.Data
             foreach (var characterSaleModel in characterSaleModels)
             {
                 CharacterAuctionSale storeCharacterAuctionSale = characterAuctionSales.FirstOrDefault(x => x.ItemID == characterSaleModel.ItemID
-                    && x.TimeOfSale == characterSaleModel.TimeOfSale.UtcDateTime && x.Copper == characterSaleModel.SoldValue.TotalCopper && x.Quantity == characterSaleModel.Count);
+                    && x.TimeOfSale == characterSaleModel.TimeOfSale.UtcDateTime && x.Copper == characterSaleModel.Money.TotalCopper && x.Quantity == characterSaleModel.Quantity
+                    && x.StackSize == characterSaleModel.StackSize);
 
                 if (storeCharacterAuctionSale == null)
                 {
                     storeCharacterAuctionSale = new()
                     {
-                        Character = characters.Single(c => c.Name == characterSaleModel.Character.Name),
-                        Copper = characterSaleModel.SoldValue.TotalCopper,
+                        Character = characters.Single(c => c.Name == characterSaleModel.Character),
+                        Copper = characterSaleModel.Money.TotalCopper,
                         ItemID = characterSaleModel.ItemID,
-                        Quantity = characterSaleModel.Count,
-                        TimeOfSale = characterSaleModel.TimeOfSale.UtcDateTime
+                        Quantity = characterSaleModel.Quantity,
+                        TimeOfSale = characterSaleModel.TimeOfSale.UtcDateTime,
+                        Source = characterSaleModel.Source,
+                        StackSize = characterSaleModel.StackSize
                     };
 
                     await dbContext.AddAsync(storeCharacterAuctionSale);
@@ -156,28 +216,47 @@ namespace TSM.Data
 
         public async Task StoreExpiredAuctions(IEnumerable<core.ExpiredAuctionModel> expiredAuctionModels)
         {
-            Character[] characters = dbContext.Characters.ToArray();
-            var characterExpiredAuctions = dbContext.CharacterExpiredAuctions.AsEnumerable().Where(x =>
-                x.ExpiredTime >= expiredAuctionModels.Min(y => y.Time.UtcDateTime) && x.ExpiredTime <= expiredAuctionModels.Max(y => y.Time.UtcDateTime)).ToArray();
-
-            foreach (var expiredAuctionModel in expiredAuctionModels)
+            if (expiredAuctionModels != null && expiredAuctionModels.Any())
             {
-                CharacterExpiredAuction storeCharacterExpiredAuction = characterExpiredAuctions.FirstOrDefault(x => x.ItemID == expiredAuctionModel.ItemId
-                    && x.ExpiredTime == expiredAuctionModel.Time.UtcDateTime);
+                Character[] characters = dbContext.Characters.ToArray();
+                var characterExpiredAuctions = dbContext.CharacterExpiredAuctions.AsEnumerable().Where(x =>
+                    x.ExpiredTime >= expiredAuctionModels.Min(y => y.Time.UtcDateTime) && x.ExpiredTime <= expiredAuctionModels.Max(y => y.Time.UtcDateTime)).ToArray();
 
-                if (storeCharacterExpiredAuction == null)
+                foreach (var expiredAuctionModel in expiredAuctionModels)
                 {
-                    storeCharacterExpiredAuction = new()
-                    {
-                        Character = characters.Single(c => c.Name == expiredAuctionModel.Player),
-                        ExpiredTime = expiredAuctionModel.Time.UtcDateTime,
-                        ItemID = expiredAuctionModel.ItemId,
-                        Quantity = expiredAuctionModel.Quantity,
-                        StackSize = expiredAuctionModel.StackSize
-                    };
+                    CharacterExpiredAuction storeCharacterExpiredAuction = characterExpiredAuctions.FirstOrDefault(x => x.ItemID == expiredAuctionModel.ItemId
+                        && x.ExpiredTime == expiredAuctionModel.Time.UtcDateTime);
 
-                    await dbContext.AddAsync(storeCharacterExpiredAuction);
+                    if (storeCharacterExpiredAuction == null)
+                    {
+                        storeCharacterExpiredAuction = new()
+                        {
+                            Character = characters.Single(c => c.Name == expiredAuctionModel.Player),
+                            ExpiredTime = expiredAuctionModel.Time.UtcDateTime,
+                            ItemID = expiredAuctionModel.ItemId,
+                            Quantity = expiredAuctionModel.Quantity,
+                            StackSize = expiredAuctionModel.StackSize
+                        };
+
+                        await dbContext.AddAsync(storeCharacterExpiredAuction);
+                    }
                 }
+
+                await dbContext.SaveChangesAsync();
+            }
+        }
+
+        public async Task StoreItemNames(IDictionary<string, string> items)
+        {
+            var storeItems = dbContext.Items.Select(x => x.ItemID).ToArray();
+
+            foreach (var item in items.Where(x => !storeItems.Contains(x.Key)))
+            {
+                await dbContext.Items.AddAsync(new Item
+                {
+                    ItemID = item.Key,
+                    Name = item.Value
+                });
             }
 
             await dbContext.SaveChangesAsync();

@@ -6,7 +6,17 @@ namespace TSM.Core.LocalStorage
     {
         void Configure();
 
+        Task<IEnumerable<AuctionBuyModel>> GetAuctionBuyModels();
+
+        Task<string[]> GetBackupsScanned();
+
+        Task<IEnumerable<CharacterSaleModel>> GetCharacterSaleModels();
+
+        Task<IEnumerable<Character>> GetCharactersData();
+
         Task StoreAuctionBuys(IEnumerable<AuctionBuyModel> auctionBuyModels);
+
+        Task StoreBackupScanned(FileInfo backupFile, DateTimeOffset startTime);
 
         Task StoreCancelledAuctions(IEnumerable<CancelledAuctionModel> cancelledAuctionModels);
 
@@ -16,6 +26,6 @@ namespace TSM.Core.LocalStorage
 
         Task StoreExpiredAuctions(IEnumerable<ExpiredAuctionModel> expiredAuctionModels);
 
-        Task StoreBackupScanned(FileInfo backupFile, DateTimeOffset startTime);
+        Task StoreItemNames(IDictionary<string, string> items);
     }
 }

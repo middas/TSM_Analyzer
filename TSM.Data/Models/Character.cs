@@ -39,6 +39,9 @@ namespace TSM.Data.Models
         public string Faction { get; set; }
 
         [Required]
+        public DateTime LastUpdateTime { get; set; }
+
+        [Required]
         [MaxLength(255)]
         public string Name { get; set; }
 
