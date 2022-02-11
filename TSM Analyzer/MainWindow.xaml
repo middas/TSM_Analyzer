@@ -3,11 +3,13 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:lvc="clr-namespace:LiveCharts.Wpf;assembly=LiveCharts.Wpf"
         mc:Ignorable="d"
         Title="MainWindow" Height="450" Width="800">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
+            <RowDefinition />
             <RowDefinition />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
@@ -40,7 +42,18 @@
             </TextBlock>
         </Grid>
 
-        <Grid Grid.Row="2" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="5">
+        <lvc:CartesianChart Grid.Row="1" Series="{Binding Series}" Zoom="X" Pan="X">
+            <lvc:CartesianChart.AxisY>
+                <lvc:Axis LabelFormatter="{Binding GoldLabelFormatter}" Title="Money" />
+            </lvc:CartesianChart.AxisY>
+            <lvc:CartesianChart.AxisX>
+                <lvc:Axis Labels="{Binding Labels}"/>
+            </lvc:CartesianChart.AxisX>
+        </lvc:CartesianChart>
+
+        <DataGrid Grid.Row="2" AutoGenerateColumns="True" />
+
+        <Grid Grid.Row="3" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="5">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition />

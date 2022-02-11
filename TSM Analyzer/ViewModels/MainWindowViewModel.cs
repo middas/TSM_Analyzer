@@ -1,4 +1,8 @@
-﻿using System;
+﻿using LiveCharts;
+using LiveCharts.Wpf;
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
@@ -18,15 +22,17 @@ namespace TSM_Analyzer.ViewModels
 
         private readonly IDataStore dataStore;
 
+        private AuctionBuyModel[] auctionBuyModels;
         private string backupStatus;
         private bool canScan = true;
+        private Character[] characterData;
+        private CharacterSaleModel[] characterSaleModels;
+        private Func<double, string> goldLabelFormatter;
+        private SeriesCollection series;
         private Money totalGold = new(0);
         private Money totalProfit = new(0);
         private Money totalPurchases = new(0);
         private Money totalSales = new(0);
-        private Character[] characterData;
-        private AuctionBuyModel[] auctionBuyModels;
-        private CharacterSaleModel[] characterSaleModels;
 
         public MainWindowViewModel(IDataStore dataStore)
         {
@@ -34,35 +40,7 @@ namespace TSM_Analyzer.ViewModels
 
             PopulateCharacterData();
             PopulateAuctionData();
-        }
-
-        private async Task PopulateAuctionData()
-        {
-            auctionBuyModels = (await dataStore.GetAuctionBuyModels()).ToArray();
-            if (auctionBuyModels != null && auctionBuyModels.Any(x => x.Source.Equals("auction", StringComparison.OrdinalIgnoreCase)))
-            {
-                TotalPurchases = auctionBuyModels.Where(x => x.Source.Equals("auction", StringComparison.OrdinalIgnoreCase)).Select(x => x.Money)
-                    .Aggregate((left, right) => left + right);
-            }
-
-            characterSaleModels = (await dataStore.GetCharacterSaleModels()).ToArray();
-            if (characterSaleModels != null && characterSaleModels.Any(x => x.Source.Equals("auction", StringComparison.OrdinalIgnoreCase)))
-            {
-                TotalSales = characterSaleModels.Where(x => x.Source.Equals("auction", StringComparison.OrdinalIgnoreCase)).Select(x => x.Money)
-                    .Aggregate((left, right) => left + right);
-            }
-
-            TotalProfit = TotalSales - TotalPurchases;
-        }
-
-        private async Task PopulateCharacterData()
-        {
-            characterData = (await dataStore.GetCharactersData()).ToArray();
-
-            if (characterData != null && characterData.Any())
-            {
-                TotalGold = characterData.Select(c => c.Money).Aggregate((left, right) => left + right);
-            }
+            PopulateChartData();
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;
@@ -87,7 +65,29 @@ namespace TSM_Analyzer.ViewModels
             }
         }
 
+        public Func<double, string> GoldLabelFormatter
+        {
+            get => goldLabelFormatter;
+            set
+            {
+                goldLabelFormatter = value;
+                FirePropertyChanged();
+            }
+        }
+
+        public ObservableCollection<string> Labels { get; set; }
+
         public ICommand ScanBackupsCommand => new RelayCommand(() => ScanBackups());
+
+        public SeriesCollection Series
+        {
+            get => series;
+            set
+            {
+                series = value;
+                FirePropertyChanged();
+            }
+        }
 
         public Money TotalGold
         {
@@ -129,9 +129,90 @@ namespace TSM_Analyzer.ViewModels
             }
         }
 
+        private IEnumerable<DateTimeOffset> EnumerateDays(DateTimeOffset start, DateTimeOffset end)
+        {
+            if (end < start) throw new ArgumentException($"{nameof(end)} cannot be less than {nameof(start)}");
+
+            while (start < end)
+            {
+                yield return start.Date;
+                start = start.AddDays(1);
+            }
+        }
+
         private void FirePropertyChanged([CallerMemberName] string property = "")
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(property));
+        }
+
+        private async Task PopulateAuctionData()
+        {
+            auctionBuyModels = (await dataStore.GetAuctionBuyModels()).ToArray();
+            if (auctionBuyModels != null && auctionBuyModels.Any(x => x.Source.Equals("auction", StringComparison.OrdinalIgnoreCase)))
+            {
+                TotalPurchases = auctionBuyModels.Where(x => x.Source.Equals("auction", StringComparison.OrdinalIgnoreCase)).Select(x => x.Money)
+                    .Aggregate((left, right) => left + right);
+            }
+
+            characterSaleModels = (await dataStore.GetCharacterSaleModels()).ToArray();
+            if (characterSaleModels != null && characterSaleModels.Any(x => x.Source.Equals("auction", StringComparison.OrdinalIgnoreCase)))
+            {
+                TotalSales = characterSaleModels.Where(x => x.Source.Equals("auction", StringComparison.OrdinalIgnoreCase)).Select(x => x.Money)
+                    .Aggregate((left, right) => left + right);
+            }
+
+            TotalProfit = TotalSales - TotalPurchases;
+        }
+
+        private async Task PopulateCharacterData()
+        {
+            characterData = (await dataStore.GetCharactersData()).ToArray();
+
+            if (characterData != null && characterData.Any())
+            {
+                TotalGold = characterData.Select(c => c.Money).Aggregate((left, right) => left + right);
+            }
+        }
+
+        private void PopulateChartData()
+        {
+            GoldLabelFormatter = c => new Money((long)c).ToString();
+            var valuesByDate = new Dictionary<DateTimeOffset, BoughtSold>();
+            var minDate = DateTimeOffset.FromUnixTimeSeconds(Math.Min(auctionBuyModels.Min(x => x.TimeEpoch), characterSaleModels.Min(x => x.Time)));
+            var sold = characterSaleModels.GroupBy(x => x.TimeOfSale.LocalDateTime.Date).Select(x => new { x.Key, Money = x.Select(y => y.Money).Aggregate((left, right) => left + right) });
+            var bought = auctionBuyModels.GroupBy(x => x.Time.LocalDateTime.Date).Select(x => new { x.Key, Money = x.Select(y => y.Money).Aggregate((left, right) => left + right) });
+
+            foreach (var date in EnumerateDays(minDate.ToLocalTime(), DateTimeOffset.Now))
+            {
+                valuesByDate[date] = new BoughtSold { Bought = bought.SingleOrDefault(x => x.Key == date)?.Money ?? new Money(0), Sold = sold.SingleOrDefault(x => x.Key == date)?.Money ?? new Money(0) };
+            }
+
+            Labels = new ObservableCollection<string>(valuesByDate.Select(x => x.Key.ToLocalTime().ToString("d")));
+
+            Series = new SeriesCollection
+            {
+                new LineSeries
+                {
+                    Title = "Auction Sold Value",
+                    Values = new ChartValues<long>(valuesByDate.Select(x => x.Value.Sold.TotalCopper)),
+                    PointGeometry = null,
+                    LabelPoint = point => new Money((long)point.Y).ToString()
+                },
+                new LineSeries
+                {
+                    Title = "Auction Bought Value",
+                    Values = new ChartValues<long>(valuesByDate.Select(x => -x.Value.Bought.TotalCopper)),
+                    PointGeometry = null,
+                    LabelPoint = point => new Money((long)point.Y).ToString()
+                },
+                new LineSeries
+                {
+                    Title = "Total Profit",
+                    Values = new ChartValues<long>(valuesByDate.Select(x => (x.Value.Sold - x.Value.Bought).TotalCopper)),
+                    PointGeometry = null,
+                    LabelPoint = point => new Money((long)point.Y).ToString()
+                }
+            };
         }
 
         private async Task ScanBackups()
@@ -175,6 +256,14 @@ namespace TSM_Analyzer.ViewModels
 
             CanScan = true;
             BackupStatus = "";
+
+            PopulateChartData();
+        }
+
+        private struct BoughtSold
+        {
+            public Money Bought;
+            public Money Sold;
         }
     }
 }
