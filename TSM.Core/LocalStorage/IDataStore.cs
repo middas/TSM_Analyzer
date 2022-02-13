@@ -10,9 +10,15 @@ namespace TSM.Core.LocalStorage
 
         Task<string[]> GetBackupsScanned();
 
+        Task<IEnumerable<CancelledAuctionModel>> GetCancelledAuctionModels();
+
         Task<IEnumerable<CharacterSaleModel>> GetCharacterSaleModels();
 
         Task<IEnumerable<Character>> GetCharactersData();
+
+        Task<IEnumerable<ExpiredAuctionModel>> GetExpiredAuctionModels();
+
+        Task<Dictionary<string, string>> GetItems();
 
         Task StoreAuctionBuys(IEnumerable<AuctionBuyModel> auctionBuyModels);
 

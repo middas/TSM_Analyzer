@@ -1,6 +1,6 @@
 ﻿namespace TSM.Core.Models
 {
-    public class Money
+    public class Money : IComparable<Money>, IComparable
     {
         private readonly long totalCopper;
 
@@ -23,7 +23,22 @@
 
         public static Money operator -(Money a, Money b) => new(a.TotalCopper - b.TotalCopper);
 
+        public static Money operator -(Money a) => new(-a.totalCopper);
+
         public static Money operator +(Money a, Money b) => new(a.TotalCopper + b.totalCopper);
+
+        public int CompareTo(Money? other)
+        {
+            if (other == null) return 0;
+            return TotalCopper.CompareTo(other.TotalCopper);
+        }
+
+        public int CompareTo(object? obj)
+        {
+            if (obj == null) return 0;
+            if (obj is Money m) return CompareTo(m);
+            return 0;
+        }
 
         public override string ToString()
         {

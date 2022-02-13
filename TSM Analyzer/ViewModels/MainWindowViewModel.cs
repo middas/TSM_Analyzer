@@ -12,10 +12,38 @@ using System.Windows.Input;
 using TSM.Core.LocalStorage;
 using TSM.Core.Models;
 using TSM.Logic.Data_Parser;
+using TSM.Logic.ItemLookup;
 using TSM_Analyzer.Mvvm;
 
 namespace TSM_Analyzer.ViewModels
 {
+    public class DataGridModel
+    {
+        public enum ModelType
+        {
+            Purchase,
+            Sale,
+            Expired,
+            Cancelled
+        }
+
+        public string ItemID { get; set; }
+
+        public string ItemName { get; set; }
+
+        public Money Money { get; set; }
+
+        public int Quantity { get; set; }
+
+        public string Source { get; set; }
+
+        public int StackSize { get; set; }
+
+        public DateTime? Time { get; set; }
+
+        public ModelType Type { get; set; }
+    }
+
     public class MainWindowViewModel : INotifyPropertyChanged
     {
         private const string backupPath = @"TradeSkillMaster\TSMApplication\Backups";
@@ -24,9 +52,11 @@ namespace TSM_Analyzer.ViewModels
 
         private AuctionBuyModel[] auctionBuyModels;
         private string backupStatus;
+        private bool canLookupItems = true;
         private bool canScan = true;
         private Character[] characterData;
         private CharacterSaleModel[] characterSaleModels;
+        private ObservableCollection<DataGridModel> dataGridModels;
         private Func<double, string> goldLabelFormatter;
         private SeriesCollection series;
         private Money totalGold = new(0);
@@ -41,6 +71,7 @@ namespace TSM_Analyzer.ViewModels
             PopulateCharacterData();
             PopulateAuctionData();
             PopulateChartData();
+            PopulateDataGrid();
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;
@@ -55,12 +86,32 @@ namespace TSM_Analyzer.ViewModels
             }
         }
 
+        public bool CanLookupItems
+        {
+            get => canLookupItems;
+            set
+            {
+                canLookupItems = value;
+                FirePropertyChanged();
+            }
+        }
+
         public bool CanScan
         {
             get => canScan;
             set
             {
                 canScan = value;
+                FirePropertyChanged();
+            }
+        }
+
+        public ObservableCollection<DataGridModel> DataGridModels
+        {
+            get => dataGridModels;
+            set
+            {
+                dataGridModels = value;
                 FirePropertyChanged();
             }
         }
@@ -76,6 +127,8 @@ namespace TSM_Analyzer.ViewModels
         }
 
         public ObservableCollection<string> Labels { get; set; }
+
+        public ICommand LookupMissingItemsCommand => new RelayCommand(() => LookupMissingItems());
 
         public ICommand ScanBackupsCommand => new RelayCommand(() => ScanBackups());
 
@@ -145,6 +198,14 @@ namespace TSM_Analyzer.ViewModels
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(property));
         }
 
+        private async Task LookupMissingItems()
+        {
+            CanLookupItems = false;
+            await new ItemLookup().LookupItemsAsync(DataGridModels.Where(x => x.ItemName is null).Select(x => x.ItemID).Distinct(), dataStore);
+            await PopulateDataGrid();
+            CanLookupItems = true;
+        }
+
         private async Task PopulateAuctionData()
         {
             auctionBuyModels = (await dataStore.GetAuctionBuyModels()).ToArray();
@@ -182,9 +243,16 @@ namespace TSM_Analyzer.ViewModels
             var sold = characterSaleModels.GroupBy(x => x.TimeOfSale.LocalDateTime.Date).Select(x => new { x.Key, Money = x.Select(y => y.Money).Aggregate((left, right) => left + right) });
             var bought = auctionBuyModels.GroupBy(x => x.Time.LocalDateTime.Date).Select(x => new { x.Key, Money = x.Select(y => y.Money).Aggregate((left, right) => left + right) });
 
+            Money prevDay = new(0);
             foreach (var date in EnumerateDays(minDate.ToLocalTime(), DateTimeOffset.Now))
             {
-                valuesByDate[date] = new BoughtSold { Bought = bought.SingleOrDefault(x => x.Key == date)?.Money ?? new Money(0), Sold = sold.SingleOrDefault(x => x.Key == date)?.Money ?? new Money(0) };
+                valuesByDate[date] = new BoughtSold(prevDay)
+                {
+                    Bought = bought.SingleOrDefault(x => x.Key == date)?.Money ?? new Money(0),
+                    Sold = sold.SingleOrDefault(x => x.Key == date)?.Money ?? new Money(0),
+                };
+
+                prevDay = valuesByDate[date].RunningTotal;
             }
 
             Labels = new ObservableCollection<string>(valuesByDate.Select(x => x.Key.ToLocalTime().ToString("d")));
@@ -208,18 +276,71 @@ namespace TSM_Analyzer.ViewModels
                 new LineSeries
                 {
                     Title = "Total Profit",
-                    Values = new ChartValues<long>(valuesByDate.Select(x => (x.Value.Sold - x.Value.Bought).TotalCopper)),
+                    Values = new ChartValues<long>(valuesByDate.Select(x => (x.Value.RunningTotal).TotalCopper)),
                     PointGeometry = null,
                     LabelPoint = point => new Money((long)point.Y).ToString()
                 }
             };
         }
 
+        private async Task PopulateDataGrid()
+        {
+            var items = await dataStore.GetItems();
+            List<DataGridModel> models = new();
+
+            models.AddRange(characterSaleModels.Select(x => new DataGridModel
+            {
+                ItemID = x.ItemID,
+                Money = x.Money,
+                Quantity = x.Quantity,
+                Time = x.TimeOfSale.LocalDateTime,
+                Source = x.Source,
+                StackSize = x.StackSize,
+                ItemName = items.ContainsKey(x.ItemID) ? items[x.ItemID] : null,
+                Type = DataGridModel.ModelType.Sale
+            }));
+            models.AddRange(auctionBuyModels.Select(x => new DataGridModel
+            {
+                Time = x.Time.LocalDateTime,
+                ItemID = x.ItemId,
+                ItemName = items.ContainsKey(x.ItemId) ? items[x.ItemId] : null,
+                Money = -x.Money,
+                Quantity = x.Quantity,
+                Source = x.Source,
+                StackSize = x.StackSize,
+                Type = DataGridModel.ModelType.Purchase
+            }));
+            models.AddRange((await dataStore.GetCancelledAuctionModels()).Select(x => new DataGridModel
+            {
+                ItemID = x.ItemId,
+                ItemName = items.ContainsKey(x.ItemId) ? items[x.ItemId] : null,
+                Money = null,
+                Quantity = x.Quantity,
+                Source = "Auction",
+                StackSize = x.StackSize,
+                Time = x.Time.LocalDateTime,
+                Type = DataGridModel.ModelType.Cancelled
+            }));
+            models.AddRange((await dataStore.GetExpiredAuctionModels()).Select(x => new DataGridModel
+            {
+                ItemID = x.ItemId,
+                ItemName = items.ContainsKey(x.ItemId) ? items[x.ItemId] : null,
+                Money = null,
+                Quantity = x.Quantity,
+                Source = "Auction",
+                StackSize = x.StackSize,
+                Time = x.Time.LocalDateTime,
+                Type = DataGridModel.ModelType.Expired
+            }));
+
+            DataGridModels = new ObservableCollection<DataGridModel>(models.OrderBy(x => x.Time));
+        }
+
         private async Task ScanBackups()
         {
             CanScan = false;
 
-            DirectoryInfo backupDirectory = new DirectoryInfo(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), backupPath));
+            DirectoryInfo backupDirectory = new(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), backupPath));
             var backupsScanned = await dataStore.GetBackupsScanned();
             await Task.Run(async () =>
             {
@@ -260,10 +381,20 @@ namespace TSM_Analyzer.ViewModels
             PopulateChartData();
         }
 
-        private struct BoughtSold
+        private class BoughtSold
         {
-            public Money Bought;
-            public Money Sold;
+            private readonly Money prevDay;
+
+            public BoughtSold(Money prevDay)
+            {
+                this.prevDay = prevDay;
+            }
+
+            public Money Bought { get; set; }
+
+            public Money RunningTotal => prevDay + Sold - Bought;
+
+            public Money Sold { get; set; }
         }
     }
 }

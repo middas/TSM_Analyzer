@@ -40,6 +40,18 @@ namespace TSM.Data
             return await dbContext.ScannedBackups.Select(b => b.BackupPath).ToArrayAsync();
         }
 
+        public async Task<IEnumerable<core.CancelledAuctionModel>> GetCancelledAuctionModels()
+        {
+            return await dbContext.CharacterCancelledAuctions.Select(x => new core.CancelledAuctionModel
+            {
+                ItemId = x.ItemID,
+                PlayerName = x.Character.Name,
+                Quantity = x.Quantity,
+                StackSize = x.StackSize,
+                TimeEpoch = new DateTimeOffset(x.CancelledTime, TimeSpan.Zero).ToUnixTimeSeconds()
+            }).ToArrayAsync();
+        }
+
         public async Task<IEnumerable<core.CharacterSaleModel>> GetCharacterSaleModels()
         {
             var storeSales = await dbContext.CharacterAuctionSales.ToArrayAsync();
@@ -70,6 +82,23 @@ namespace TSM.Data
                 Money = new core.Money(c.Copper),
                 ReagentItems = c.CharacterReagents.ToDictionary(x => x.ItemID, x => x.Quantity)
             }).ToArray();
+        }
+
+        public async Task<IEnumerable<core.ExpiredAuctionModel>> GetExpiredAuctionModels()
+        {
+            return await dbContext.CharacterExpiredAuctions.Select(x => new core.ExpiredAuctionModel
+            {
+                ItemId = x.ItemID,
+                Player = x.Character.Name,
+                Quantity = x.Quantity,
+                StackSize = x.StackSize,
+                TimeEpoch = new DateTimeOffset(x.ExpiredTime, TimeSpan.Zero).ToUnixTimeSeconds()
+            }).ToArrayAsync();
+        }
+
+        public Task<Dictionary<string, string>> GetItems()
+        {
+            return dbContext.Items.ToDictionaryAsync(x => x.ItemID, x => x.Name);
         }
 
         public async Task StoreAuctionBuys(IEnumerable<core.AuctionBuyModel> auctionBuyModels)
