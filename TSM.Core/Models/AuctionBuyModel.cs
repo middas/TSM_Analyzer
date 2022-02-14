@@ -34,5 +34,8 @@ namespace TSM.Core.Models
 
         [Name("time")]
         public long TimeEpoch { get; set; }
+
+        [Ignore]
+        public Money Total => Money * Quantity;
     }
 }

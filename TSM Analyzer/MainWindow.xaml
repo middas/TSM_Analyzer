@@ -55,7 +55,8 @@
             <DataGrid.Columns>
                 <DataGridTextColumn Header="Time" Binding="{Binding Time, StringFormat=g}" SortDirection="Ascending" />
                 <DataGridTextColumn Header="Item Name" Binding="{Binding ItemName}" />
-                <DataGridTextColumn Header="Money" Binding="{Binding Money}" />
+                <DataGridTextColumn Header="Price" Binding="{Binding Money}" />
+                <DataGridTextColumn Header="Total" Binding="{Binding Total}" />
                 <DataGridTextColumn Header="Quantity" Binding="{Binding Quantity}" />
                 <DataGridTextColumn Header="Stack Size" Binding="{Binding StackSize}" />
                 <DataGridTextColumn Header="Source" Binding="{Binding Source}" />

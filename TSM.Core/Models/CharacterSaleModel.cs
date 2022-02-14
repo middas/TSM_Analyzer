@@ -31,6 +31,9 @@ namespace TSM.Core.Models
         [Ignore]
         public DateTimeOffset TimeOfSale => DateTimeOffset.FromUnixTimeSeconds(Time);
 
+        [Ignore]
+        public Money Total => Money * Quantity;
+
         public override string ToString()
         {
             return $"{Character} - {ItemID} - {Money}";

@@ -27,6 +27,8 @@
 
         public static Money operator +(Money a, Money b) => new(a.TotalCopper + b.totalCopper);
 
+        public static Money operator *(Money a, int b) => new(a.totalCopper * b);
+
         public int CompareTo(Money? other)
         {
             if (other == null) return 0;

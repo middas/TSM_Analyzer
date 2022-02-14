@@ -9,6 +9,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using System.Windows.Input;
+using TSM.Core.Extensions;
 using TSM.Core.LocalStorage;
 using TSM.Core.Models;
 using TSM.Logic.Data_Parser;
@@ -40,6 +41,8 @@ namespace TSM_Analyzer.ViewModels
         public int StackSize { get; set; }
 
         public DateTime? Time { get; set; }
+
+        public Money Total { get; set; }
 
         public ModelType Type { get; set; }
     }
@@ -186,7 +189,7 @@ namespace TSM_Analyzer.ViewModels
         {
             if (end < start) throw new ArgumentException($"{nameof(end)} cannot be less than {nameof(start)}");
 
-            while (start < end)
+            while (start <= end)
             {
                 yield return start.Date;
                 start = start.AddDays(1);
@@ -211,15 +214,15 @@ namespace TSM_Analyzer.ViewModels
             auctionBuyModels = (await dataStore.GetAuctionBuyModels()).ToArray();
             if (auctionBuyModels != null && auctionBuyModels.Any(x => x.Source.Equals("auction", StringComparison.OrdinalIgnoreCase)))
             {
-                TotalPurchases = auctionBuyModels.Where(x => x.Source.Equals("auction", StringComparison.OrdinalIgnoreCase)).Select(x => x.Money)
-                    .Aggregate((left, right) => left + right);
+                TotalPurchases = auctionBuyModels.Where(x => x.Source.Equals("auction", StringComparison.OrdinalIgnoreCase)).Select(x => x.Total).Sum();
+                //.Aggregate((left, right) => left + right);
             }
 
             characterSaleModels = (await dataStore.GetCharacterSaleModels()).ToArray();
             if (characterSaleModels != null && characterSaleModels.Any(x => x.Source.Equals("auction", StringComparison.OrdinalIgnoreCase)))
             {
-                TotalSales = characterSaleModels.Where(x => x.Source.Equals("auction", StringComparison.OrdinalIgnoreCase)).Select(x => x.Money)
-                    .Aggregate((left, right) => left + right);
+                TotalSales = characterSaleModels.Where(x => x.Source.Equals("auction", StringComparison.OrdinalIgnoreCase)).Select(x => x.Total).Sum();
+                //.Aggregate((left, right) => left + right);
             }
 
             TotalProfit = TotalSales - TotalPurchases;
@@ -244,7 +247,7 @@ namespace TSM_Analyzer.ViewModels
             var bought = auctionBuyModels.GroupBy(x => x.Time.LocalDateTime.Date).Select(x => new { x.Key, Money = x.Select(y => y.Money).Aggregate((left, right) => left + right) });
 
             Money prevDay = new(0);
-            foreach (var date in EnumerateDays(minDate.ToLocalTime(), DateTimeOffset.Now))
+            foreach (var date in EnumerateDays(minDate.ToLocalTime().Date, DateTimeOffset.Now))
             {
                 valuesByDate[date] = new BoughtSold(prevDay)
                 {
@@ -297,7 +300,8 @@ namespace TSM_Analyzer.ViewModels
                 Source = x.Source,
                 StackSize = x.StackSize,
                 ItemName = items.ContainsKey(x.ItemID) ? items[x.ItemID] : null,
-                Type = DataGridModel.ModelType.Sale
+                Type = DataGridModel.ModelType.Sale,
+                Total = x.Total
             }));
             models.AddRange(auctionBuyModels.Select(x => new DataGridModel
             {
@@ -308,7 +312,8 @@ namespace TSM_Analyzer.ViewModels
                 Quantity = x.Quantity,
                 Source = x.Source,
                 StackSize = x.StackSize,
-                Type = DataGridModel.ModelType.Purchase
+                Type = DataGridModel.ModelType.Purchase,
+                Total = x.Total
             }));
             models.AddRange((await dataStore.GetCancelledAuctionModels()).Select(x => new DataGridModel
             {
@@ -379,6 +384,7 @@ namespace TSM_Analyzer.ViewModels
             BackupStatus = "";
 
             PopulateChartData();
+            await PopulateDataGrid();
         }
 
         private class BoughtSold
