@@ -28,6 +28,8 @@ namespace TSM_Analyzer.ViewModels
             Cancelled
         }
 
+        public string Character { get; set; }
+
         public string ItemID { get; set; }
 
         public string ItemName { get; set; }
@@ -301,7 +303,8 @@ namespace TSM_Analyzer.ViewModels
                 StackSize = x.StackSize,
                 ItemName = items.ContainsKey(x.ItemID) ? items[x.ItemID] : null,
                 Type = DataGridModel.ModelType.Sale,
-                Total = x.Total
+                Total = x.Total,
+                Character = x.Character
             }));
             models.AddRange(auctionBuyModels.Select(x => new DataGridModel
             {
@@ -313,7 +316,8 @@ namespace TSM_Analyzer.ViewModels
                 Source = x.Source,
                 StackSize = x.StackSize,
                 Type = DataGridModel.ModelType.Purchase,
-                Total = x.Total
+                Total = -x.Total,
+                Character = x.Player
             }));
             models.AddRange((await dataStore.GetCancelledAuctionModels()).Select(x => new DataGridModel
             {
@@ -324,7 +328,8 @@ namespace TSM_Analyzer.ViewModels
                 Source = "Auction",
                 StackSize = x.StackSize,
                 Time = x.Time.LocalDateTime,
-                Type = DataGridModel.ModelType.Cancelled
+                Type = DataGridModel.ModelType.Cancelled,
+                Character = x.PlayerName
             }));
             models.AddRange((await dataStore.GetExpiredAuctionModels()).Select(x => new DataGridModel
             {
@@ -335,7 +340,8 @@ namespace TSM_Analyzer.ViewModels
                 Source = "Auction",
                 StackSize = x.StackSize,
                 Time = x.Time.LocalDateTime,
-                Type = DataGridModel.ModelType.Expired
+                Type = DataGridModel.ModelType.Expired,
+                Character = x.Player
             }));
 
             DataGridModels = new ObservableCollection<DataGridModel>(models.OrderBy(x => x.Time));

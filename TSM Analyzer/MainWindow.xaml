@@ -57,6 +57,7 @@
                 <DataGridTextColumn Header="Item Name" Binding="{Binding ItemName}" />
                 <DataGridTextColumn Header="Price" Binding="{Binding Money}" />
                 <DataGridTextColumn Header="Total" Binding="{Binding Total}" />
+                <DataGridTextColumn Header="Character" Binding="{Binding Character}" />
                 <DataGridTextColumn Header="Quantity" Binding="{Binding Quantity}" />
                 <DataGridTextColumn Header="Stack Size" Binding="{Binding StackSize}" />
                 <DataGridTextColumn Header="Source" Binding="{Binding Source}" />
