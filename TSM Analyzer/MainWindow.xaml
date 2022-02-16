@@ -5,15 +5,43 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:lvc="clr-namespace:LiveCharts.Wpf;assembly=LiveCharts.Wpf"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
+        Title="TSM Analyzer" Height="600" Width="800">
     <Grid>
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition />
             <RowDefinition />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
         <Grid Margin="5">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition/>
+            </Grid.ColumnDefinitions>
+            <Grid.Resources>
+                <Style TargetType="{x:Type TextBlock}">
+                    <Setter Property="Margin" Value="5 0"/>
+                    <Setter Property="VerticalAlignment" Value="Center"/>
+                </Style>
+                <Style TargetType="{x:Type DatePicker}">
+                    <Setter Property="Margin" Value="5 0"/>
+                </Style>
+            </Grid.Resources>
+
+            <TextBlock Text="From:"/>
+            <DatePicker Grid.Column="1" SelectedDate="{Binding FilterFrom}"/>
+
+            <TextBlock Grid.Column="2" Text="To:"/>
+            <DatePicker Grid.Column="3" SelectedDate="{Binding FilterTo}"/>
+
+            <Button Content="Filter" HorizontalAlignment="Left" Grid.Column="4" Margin="5 0" Padding="15 0" Command="{Binding FilterCommand}" IsEnabled="{Binding CanFilter}"/>
+        </Grid>
+        
+        <Grid Margin="5" Grid.Row="1">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
@@ -42,7 +70,7 @@
             </TextBlock>
         </Grid>
 
-        <lvc:CartesianChart Grid.Row="1" Series="{Binding Series}" Zoom="X" Pan="X">
+        <lvc:CartesianChart Grid.Row="2" Series="{Binding Series}" Zoom="X" Pan="X">
             <lvc:CartesianChart.AxisY>
                 <lvc:Axis LabelFormatter="{Binding GoldLabelFormatter}" Title="Money" />
             </lvc:CartesianChart.AxisY>
@@ -51,7 +79,7 @@
             </lvc:CartesianChart.AxisX>
         </lvc:CartesianChart>
 
-        <DataGrid Grid.Row="2" AutoGenerateColumns="False" ItemsSource="{Binding DataGridModels}" IsReadOnly="True">
+        <DataGrid Grid.Row="3" AutoGenerateColumns="False" ItemsSource="{Binding DataGridModels}" IsReadOnly="True">
             <DataGrid.Columns>
                 <DataGridTextColumn Header="Time" Binding="{Binding Time, StringFormat=g}" SortDirection="Ascending" />
                 <DataGridTextColumn Header="Item Name" Binding="{Binding ItemName}" />
@@ -66,7 +94,7 @@
             </DataGrid.Columns>
         </DataGrid>
 
-        <Grid Grid.Row="3" VerticalAlignment="Bottom" Margin="5">
+        <Grid Grid.Row="4" VerticalAlignment="Bottom" Margin="5">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition />

@@ -8,6 +8,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Input;
 using TSM.Core.Extensions;
 using TSM.Core.LocalStorage;
@@ -57,12 +58,16 @@ namespace TSM_Analyzer.ViewModels
 
         private AuctionBuyModel[] auctionBuyModels;
         private string backupStatus;
+        private bool canFilter = true;
         private bool canLookupItems = true;
         private bool canScan = true;
         private Character[] characterData;
         private CharacterSaleModel[] characterSaleModels;
         private ObservableCollection<DataGridModel> dataGridModels;
+        private DateTime filterFrom;
+        private DateTime filterTo;
         private Func<double, string> goldLabelFormatter;
+        private ObservableCollection<string> labels;
         private SeriesCollection series;
         private Money totalGold = new(0);
         private Money totalProfit = new(0);
@@ -73,10 +78,10 @@ namespace TSM_Analyzer.ViewModels
         {
             this.dataStore = dataStore;
 
-            PopulateCharacterData();
-            PopulateAuctionData();
-            PopulateChartData();
-            PopulateDataGrid();
+            FilterFrom = DateTime.Now.AddDays(-14);
+            FilterTo = DateTime.Now.AddDays(1);
+
+            Task.Run(PopulateAllData);
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;
@@ -87,6 +92,16 @@ namespace TSM_Analyzer.ViewModels
             set
             {
                 backupStatus = value;
+                FirePropertyChanged();
+            }
+        }
+
+        public bool CanFilter
+        {
+            get => canFilter;
+            set
+            {
+                canFilter = value;
                 FirePropertyChanged();
             }
         }
@@ -121,6 +136,28 @@ namespace TSM_Analyzer.ViewModels
             }
         }
 
+        public ICommand FilterCommand => new RelayCommand(() => FilterData());
+
+        public DateTime FilterFrom
+        {
+            get => filterFrom;
+            set
+            {
+                filterFrom = value;
+                FirePropertyChanged();
+            }
+        }
+
+        public DateTime FilterTo
+        {
+            get => filterTo;
+            set
+            {
+                filterTo = value;
+                FirePropertyChanged();
+            }
+        }
+
         public Func<double, string> GoldLabelFormatter
         {
             get => goldLabelFormatter;
@@ -131,7 +168,15 @@ namespace TSM_Analyzer.ViewModels
             }
         }
 
-        public ObservableCollection<string> Labels { get; set; }
+        public ObservableCollection<string> Labels
+        {
+            get => labels;
+            set
+            {
+                labels = value;
+                FirePropertyChanged();
+            }
+        }
 
         public ICommand LookupMissingItemsCommand => new RelayCommand(() => LookupMissingItems());
 
@@ -198,6 +243,15 @@ namespace TSM_Analyzer.ViewModels
             }
         }
 
+        private async Task FilterData()
+        {
+            CanFilter = false;
+
+            await PopulateAllData();
+
+            CanFilter = true;
+        }
+
         private void FirePropertyChanged([CallerMemberName] string property = "")
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(property));
@@ -211,20 +265,35 @@ namespace TSM_Analyzer.ViewModels
             CanLookupItems = true;
         }
 
+        private async Task PopulateAllData()
+        {
+            await PopulateCharacterData();
+            await PopulateAuctionData();
+            await PopulateDataGrid();
+
+            Application.Current.Dispatcher.Invoke(PopulateChartData);
+        }
+
         private async Task PopulateAuctionData()
         {
-            auctionBuyModels = (await dataStore.GetAuctionBuyModels()).ToArray();
+            TotalProfit = TotalSales = TotalPurchases = new(0);
+
+            auctionBuyModels = (await dataStore.GetAuctionBuyModels()).Where(x => x.Time >= FilterFrom && x.Time < FilterTo).ToArray();
             if (auctionBuyModels != null && auctionBuyModels.Any(x => x.Source.Equals("auction", StringComparison.OrdinalIgnoreCase)))
             {
                 TotalPurchases = auctionBuyModels.Where(x => x.Source.Equals("auction", StringComparison.OrdinalIgnoreCase)).Select(x => x.Total).Sum();
-                //.Aggregate((left, right) => left + right);
             }
 
-            characterSaleModels = (await dataStore.GetCharacterSaleModels()).ToArray();
+            characterSaleModels = (await dataStore.GetCharacterSaleModels()).Where(x => x.TimeOfSale >= FilterFrom && x.TimeOfSale < FilterTo).ToArray();
             if (characterSaleModels != null && characterSaleModels.Any(x => x.Source.Equals("auction", StringComparison.OrdinalIgnoreCase)))
             {
                 TotalSales = characterSaleModels.Where(x => x.Source.Equals("auction", StringComparison.OrdinalIgnoreCase)).Select(x => x.Total).Sum();
-                //.Aggregate((left, right) => left + right);
+            }
+
+            var minDate = DateTimeOffset.FromUnixTimeSeconds(Math.Min(auctionBuyModels.Min(x => x.TimeEpoch), characterSaleModels.Min(x => x.Time)));
+            if (FilterFrom < minDate.Date)
+            {
+                FilterFrom = minDate.Date;
             }
 
             TotalProfit = TotalSales - TotalPurchases;
@@ -244,12 +313,11 @@ namespace TSM_Analyzer.ViewModels
         {
             GoldLabelFormatter = c => new Money((long)c).ToString();
             var valuesByDate = new Dictionary<DateTimeOffset, BoughtSold>();
-            var minDate = DateTimeOffset.FromUnixTimeSeconds(Math.Min(auctionBuyModels.Min(x => x.TimeEpoch), characterSaleModels.Min(x => x.Time)));
-            var sold = characterSaleModels.GroupBy(x => x.TimeOfSale.LocalDateTime.Date).Select(x => new { x.Key, Money = x.Select(y => y.Money).Aggregate((left, right) => left + right) });
-            var bought = auctionBuyModels.GroupBy(x => x.Time.LocalDateTime.Date).Select(x => new { x.Key, Money = x.Select(y => y.Money).Aggregate((left, right) => left + right) });
+            var sold = characterSaleModels.GroupBy(x => x.TimeOfSale.LocalDateTime.Date).Select(x => new { x.Key, Money = x.Select(y => y.Total).Sum() });
+            var bought = auctionBuyModels.GroupBy(x => x.Time.LocalDateTime.Date).Select(x => new { x.Key, Money = x.Select(y => y.Total).Sum() });
 
             Money prevDay = new(0);
-            foreach (var date in EnumerateDays(minDate.ToLocalTime().Date, DateTimeOffset.Now))
+            foreach (var date in EnumerateDays(FilterFrom.Date, FilterTo))
             {
                 valuesByDate[date] = new BoughtSold(prevDay)
                 {
@@ -293,7 +361,7 @@ namespace TSM_Analyzer.ViewModels
             var items = await dataStore.GetItems();
             List<DataGridModel> models = new();
 
-            models.AddRange(characterSaleModels.Select(x => new DataGridModel
+            models.AddRange(characterSaleModels.Where(x => x.TimeOfSale >= FilterFrom && x.TimeOfSale < FilterTo).Select(x => new DataGridModel
             {
                 ItemID = x.ItemID,
                 Money = x.Money,
@@ -306,7 +374,7 @@ namespace TSM_Analyzer.ViewModels
                 Total = x.Total,
                 Character = x.Character
             }));
-            models.AddRange(auctionBuyModels.Select(x => new DataGridModel
+            models.AddRange(auctionBuyModels.Where(x => x.Time >= FilterFrom && x.Time < FilterTo).Select(x => new DataGridModel
             {
                 Time = x.Time.LocalDateTime,
                 ItemID = x.ItemId,
@@ -319,7 +387,7 @@ namespace TSM_Analyzer.ViewModels
                 Total = -x.Total,
                 Character = x.Player
             }));
-            models.AddRange((await dataStore.GetCancelledAuctionModels()).Select(x => new DataGridModel
+            models.AddRange((await dataStore.GetCancelledAuctionModels()).Where(x => x.Time >= FilterFrom && x.Time < FilterTo).Select(x => new DataGridModel
             {
                 ItemID = x.ItemId,
                 ItemName = items.ContainsKey(x.ItemId) ? items[x.ItemId] : null,
@@ -331,7 +399,7 @@ namespace TSM_Analyzer.ViewModels
                 Type = DataGridModel.ModelType.Cancelled,
                 Character = x.PlayerName
             }));
-            models.AddRange((await dataStore.GetExpiredAuctionModels()).Select(x => new DataGridModel
+            models.AddRange((await dataStore.GetExpiredAuctionModels()).Where(x => x.Time >= FilterFrom && x.Time < FilterTo).Select(x => new DataGridModel
             {
                 ItemID = x.ItemId,
                 ItemName = items.ContainsKey(x.ItemId) ? items[x.ItemId] : null,
