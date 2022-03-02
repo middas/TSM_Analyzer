@@ -19,6 +19,18 @@ namespace TSM.Core.Models
             PopulateData();
         }
 
+        public BackupModel(IEnumerable<AuctionBuyModel> auctionBuyModels, IEnumerable<CancelledAuctionModel> cancelledAuctionModels,
+            IEnumerable<Character> characters, IEnumerable<CharacterSaleModel> characterSaleModels, IEnumerable<ExpiredAuctionModel> expiredAuctionModels,
+            IDictionary<string, string> items)
+        {
+            AuctionBuys = auctionBuyModels.ToImmutableArray();
+            CancelledAuctions = cancelledAuctionModels.ToImmutableArray();
+            Characters = characters.ToImmutableArray();
+            CharacterSaleModels = characterSaleModels.ToImmutableArray();
+            ExpiredAuctions = expiredAuctionModels.ToImmutableArray();
+            Items = items.ToImmutableDictionary();
+        }
+
         public ImmutableArray<AuctionBuyModel> AuctionBuys { get; private set; }
 
         public ImmutableArray<CancelledAuctionModel> CancelledAuctions { get; private set; }

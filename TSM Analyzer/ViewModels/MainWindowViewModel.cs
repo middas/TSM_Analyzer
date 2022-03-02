@@ -9,6 +9,8 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Input;
 using TSM.Core.Extensions;
 using TSM.Core.LocalStorage;
@@ -63,11 +65,12 @@ namespace TSM_Analyzer.ViewModels
         private bool canScan = true;
         private Character[] characterData;
         private CharacterSaleModel[] characterSaleModels;
-        private ObservableCollection<DataGridModel> dataGridModels;
+        private ICollectionView dataGridModels;
         private DateTime filterFrom;
         private DateTime filterTo;
         private Func<double, string> goldLabelFormatter;
         private ObservableCollection<string> labels;
+        private DataGridColumn selectedColumn;
         private SeriesCollection series;
         private Money totalGold = new(0);
         private Money totalProfit = new(0);
@@ -126,7 +129,7 @@ namespace TSM_Analyzer.ViewModels
             }
         }
 
-        public ObservableCollection<DataGridModel> DataGridModels
+        public ICollectionView DataGridModels
         {
             get => dataGridModels;
             set
@@ -181,6 +184,16 @@ namespace TSM_Analyzer.ViewModels
         public ICommand LookupMissingItemsCommand => new RelayCommand(() => LookupMissingItems());
 
         public ICommand ScanBackupsCommand => new RelayCommand(() => ScanBackups());
+
+        public DataGridColumn SelectedColumn
+        {
+            get => selectedColumn;
+            set
+            {
+                selectedColumn = value;
+                FirePropertyChanged();
+            }
+        }
 
         public SeriesCollection Series
         {
@@ -243,11 +256,11 @@ namespace TSM_Analyzer.ViewModels
             }
         }
 
-        private async Task FilterData()
+        private void FilterData()
         {
             CanFilter = false;
 
-            await PopulateAllData();
+            PopulateAllData();
 
             CanFilter = true;
         }
@@ -260,43 +273,53 @@ namespace TSM_Analyzer.ViewModels
         private async Task LookupMissingItems()
         {
             CanLookupItems = false;
-            await new ItemLookup().LookupItemsAsync(DataGridModels.Where(x => x.ItemName is null).Select(x => x.ItemID).Distinct(), dataStore);
+            await new ItemLookup().LookupItemsAsync(DataGridModels.SourceCollection.OfType<DataGridModel>().Where(x => x.ItemName is null).Select(x => x.ItemID).Distinct(), dataStore);
             await PopulateDataGrid();
             CanLookupItems = true;
         }
 
-        private async Task PopulateAllData()
+        private void PopulateAllData()
         {
-            await PopulateCharacterData();
-            await PopulateAuctionData();
-            await PopulateDataGrid();
+            Application.Current.Dispatcher.BeginInvoke(() =>
+            {
+                PopulateCharacterData().Wait();
+                PopulateAuctionData().Wait();
+                PopulateDataGrid().Wait();
 
-            Application.Current.Dispatcher.Invoke(PopulateChartData);
+                PopulateChartData();
+            });
         }
 
         private async Task PopulateAuctionData()
         {
             TotalProfit = TotalSales = TotalPurchases = new(0);
 
-            auctionBuyModels = (await dataStore.GetAuctionBuyModels()).Where(x => x.Time >= FilterFrom && x.Time < FilterTo).ToArray();
-            if (auctionBuyModels != null && auctionBuyModels.Any(x => x.Source.Equals("auction", StringComparison.OrdinalIgnoreCase)))
+            try
             {
-                TotalPurchases = auctionBuyModels.Where(x => x.Source.Equals("auction", StringComparison.OrdinalIgnoreCase)).Select(x => x.Total).Sum();
-            }
+                auctionBuyModels = (await dataStore.GetAuctionBuyModels()).Where(x => x.Time >= FilterFrom && x.Time < FilterTo).ToArray();
+                if (auctionBuyModels != null && auctionBuyModels.Any(x => x.Source.Equals("auction", StringComparison.OrdinalIgnoreCase)))
+                {
+                    TotalPurchases = auctionBuyModels.Where(x => x.Source.Equals("auction", StringComparison.OrdinalIgnoreCase)).Select(x => x.Total).Sum();
+                }
 
-            characterSaleModels = (await dataStore.GetCharacterSaleModels()).Where(x => x.TimeOfSale >= FilterFrom && x.TimeOfSale < FilterTo).ToArray();
-            if (characterSaleModels != null && characterSaleModels.Any(x => x.Source.Equals("auction", StringComparison.OrdinalIgnoreCase)))
+                characterSaleModels = (await dataStore.GetCharacterSaleModels()).Where(x => x.TimeOfSale >= FilterFrom && x.TimeOfSale < FilterTo).ToArray();
+                if (characterSaleModels != null && characterSaleModels.Any(x => x.Source.Equals("auction", StringComparison.OrdinalIgnoreCase)))
+                {
+                    TotalSales = characterSaleModels.Where(x => x.Source.Equals("auction", StringComparison.OrdinalIgnoreCase)).Select(x => x.Total).Sum();
+                }
+
+                var minDate = DateTimeOffset.FromUnixTimeSeconds(Math.Min(auctionBuyModels.Min(x => x.TimeEpoch), characterSaleModels.Min(x => x.Time)));
+                if (FilterFrom < minDate.Date)
+                {
+                    FilterFrom = minDate.Date;
+                }
+
+                TotalProfit = TotalSales - TotalPurchases;
+            }
+            catch
             {
-                TotalSales = characterSaleModels.Where(x => x.Source.Equals("auction", StringComparison.OrdinalIgnoreCase)).Select(x => x.Total).Sum();
+                // no data
             }
-
-            var minDate = DateTimeOffset.FromUnixTimeSeconds(Math.Min(auctionBuyModels.Min(x => x.TimeEpoch), characterSaleModels.Min(x => x.Time)));
-            if (FilterFrom < minDate.Date)
-            {
-                FilterFrom = minDate.Date;
-            }
-
-            TotalProfit = TotalSales - TotalPurchases;
         }
 
         private async Task PopulateCharacterData()
@@ -361,58 +384,65 @@ namespace TSM_Analyzer.ViewModels
             var items = await dataStore.GetItems();
             List<DataGridModel> models = new();
 
-            models.AddRange(characterSaleModels.Where(x => x.TimeOfSale >= FilterFrom && x.TimeOfSale < FilterTo).Select(x => new DataGridModel
+            try
             {
-                ItemID = x.ItemID,
-                Money = x.Money,
-                Quantity = x.Quantity,
-                Time = x.TimeOfSale.LocalDateTime,
-                Source = x.Source,
-                StackSize = x.StackSize,
-                ItemName = items.ContainsKey(x.ItemID) ? items[x.ItemID] : null,
-                Type = DataGridModel.ModelType.Sale,
-                Total = x.Total,
-                Character = x.Character
-            }));
-            models.AddRange(auctionBuyModels.Where(x => x.Time >= FilterFrom && x.Time < FilterTo).Select(x => new DataGridModel
+                models.AddRange(characterSaleModels.Where(x => x.TimeOfSale >= FilterFrom && x.TimeOfSale < FilterTo).Select(x => new DataGridModel
+                {
+                    ItemID = x.ItemID,
+                    Money = x.Money,
+                    Quantity = x.Quantity,
+                    Time = x.TimeOfSale.LocalDateTime,
+                    Source = x.Source,
+                    StackSize = x.StackSize,
+                    ItemName = items.ContainsKey(x.ItemID) ? items[x.ItemID] : null,
+                    Type = DataGridModel.ModelType.Sale,
+                    Total = x.Total,
+                    Character = x.Character
+                }));
+                models.AddRange(auctionBuyModels.Where(x => x.Time >= FilterFrom && x.Time < FilterTo).Select(x => new DataGridModel
+                {
+                    Time = x.Time.LocalDateTime,
+                    ItemID = x.ItemId,
+                    ItemName = items.ContainsKey(x.ItemId) ? items[x.ItemId] : null,
+                    Money = -x.Money,
+                    Quantity = x.Quantity,
+                    Source = x.Source,
+                    StackSize = x.StackSize,
+                    Type = DataGridModel.ModelType.Purchase,
+                    Total = -x.Total,
+                    Character = x.Player
+                }));
+                models.AddRange((await dataStore.GetCancelledAuctionModels()).Where(x => x.Time >= FilterFrom && x.Time < FilterTo).Select(x => new DataGridModel
+                {
+                    ItemID = x.ItemId,
+                    ItemName = items.ContainsKey(x.ItemId) ? items[x.ItemId] : null,
+                    Money = null,
+                    Quantity = x.Quantity,
+                    Source = "Auction",
+                    StackSize = x.StackSize,
+                    Time = x.Time.LocalDateTime,
+                    Type = DataGridModel.ModelType.Cancelled,
+                    Character = x.PlayerName
+                }));
+                models.AddRange((await dataStore.GetExpiredAuctionModels()).Where(x => x.Time >= FilterFrom && x.Time < FilterTo).Select(x => new DataGridModel
+                {
+                    ItemID = x.ItemId,
+                    ItemName = items.ContainsKey(x.ItemId) ? items[x.ItemId] : null,
+                    Money = null,
+                    Quantity = x.Quantity,
+                    Source = "Auction",
+                    StackSize = x.StackSize,
+                    Time = x.Time.LocalDateTime,
+                    Type = DataGridModel.ModelType.Expired,
+                    Character = x.Player
+                }));
+            }
+            catch (AggregateException)
             {
-                Time = x.Time.LocalDateTime,
-                ItemID = x.ItemId,
-                ItemName = items.ContainsKey(x.ItemId) ? items[x.ItemId] : null,
-                Money = -x.Money,
-                Quantity = x.Quantity,
-                Source = x.Source,
-                StackSize = x.StackSize,
-                Type = DataGridModel.ModelType.Purchase,
-                Total = -x.Total,
-                Character = x.Player
-            }));
-            models.AddRange((await dataStore.GetCancelledAuctionModels()).Where(x => x.Time >= FilterFrom && x.Time < FilterTo).Select(x => new DataGridModel
-            {
-                ItemID = x.ItemId,
-                ItemName = items.ContainsKey(x.ItemId) ? items[x.ItemId] : null,
-                Money = null,
-                Quantity = x.Quantity,
-                Source = "Auction",
-                StackSize = x.StackSize,
-                Time = x.Time.LocalDateTime,
-                Type = DataGridModel.ModelType.Cancelled,
-                Character = x.PlayerName
-            }));
-            models.AddRange((await dataStore.GetExpiredAuctionModels()).Where(x => x.Time >= FilterFrom && x.Time < FilterTo).Select(x => new DataGridModel
-            {
-                ItemID = x.ItemId,
-                ItemName = items.ContainsKey(x.ItemId) ? items[x.ItemId] : null,
-                Money = null,
-                Quantity = x.Quantity,
-                Source = "Auction",
-                StackSize = x.StackSize,
-                Time = x.Time.LocalDateTime,
-                Type = DataGridModel.ModelType.Expired,
-                Character = x.Player
-            }));
+                // no data
+            }
 
-            DataGridModels = new ObservableCollection<DataGridModel>(models.OrderBy(x => x.Time));
+            DataGridModels = CollectionViewSource.GetDefaultView(models.OrderBy(x => x.Time));            
         }
 
         private async Task ScanBackups()
@@ -423,35 +453,40 @@ namespace TSM_Analyzer.ViewModels
             var backupsScanned = await dataStore.GetBackupsScanned();
             await Task.Run(async () =>
             {
-                foreach (var backupFile in backupDirectory.GetFiles().OrderBy(f => f.CreationTime))
+                TsmBackupParser tsmBackupParser = new();
+                tsmBackupParser.OnStatusUpdated += s =>
                 {
-                    if (backupsScanned.Contains(backupFile.FullName))
-                    {
-                        continue;
-                    }
+                    BackupStatus = s;
+                };
 
-                    BackupStatus = $"Parsing {backupFile.Name}";
-                    var backup = await TsmBackupParser.ParseBackup(backupFile);
+                var result = await tsmBackupParser.ParseBackups(backupDirectory, backupsScanned);
 
-                    DateTimeOffset startTime = DateTimeOffset.Now;
-                    BackupStatus = $"Storing character data for {backupFile.Name}";
-                    await dataStore.StoreCharacters(backup.Characters);
-                    BackupStatus = $"Storing buy data for {backupFile.Name}";
-                    await dataStore.StoreAuctionBuys(backup.AuctionBuys);
-                    BackupStatus = $"Storing sale data for {backupFile.Name}";
-                    await dataStore.StoreCharacterSales(backup.CharacterSaleModels);
-                    BackupStatus = $"Storing expired auction data for {backupFile.Name}";
-                    await dataStore.StoreExpiredAuctions(backup.ExpiredAuctions);
-                    BackupStatus = $"Storing cancelled auction data for {backupFile.Name}";
-                    await dataStore.StoreCancelledAuctions(backup.CancelledAuctions);
-                    BackupStatus = $"Storing backup file information for {backupFile.Name}";
-                    await dataStore.StoreBackupScanned(backupFile, startTime);
-                    BackupStatus = $"Storing known item names for {backupFile.Name}";
-                    await dataStore.StoreItemNames(backup.Items);
+                BackupStatus = "Storing character data.";
+                await dataStore.StoreCharacters(result.Item1.Characters);
 
-                    await PopulateCharacterData();
-                    await PopulateAuctionData();
+                BackupStatus = "Storing bought auction data.";
+                await dataStore.StoreAuctionBuys(result.Item1.AuctionBuys);
+
+                BackupStatus = "Storing cancelled auction data.";
+                await dataStore.StoreCancelledAuctions(result.Item1.CancelledAuctions);
+
+                BackupStatus = "Storing auction sale data.";
+                await dataStore.StoreCharacterSales(result.Item1.CharacterSaleModels);
+
+                BackupStatus = "Storing expired auction data.";
+                await dataStore.StoreExpiredAuctions(result.Item1.ExpiredAuctions);
+
+                BackupStatus = "Storing item names.";
+                await dataStore.StoreItemNames(result.Item1.Items);
+
+                BackupStatus = "Storing processed files.";
+                foreach(var file in result.Item2)
+                {
+                    await dataStore.StoreBackupScanned(file.FileName, file.ScanTime);
                 }
+
+                await PopulateCharacterData();
+                await PopulateAuctionData();
             });
 
             CanScan = true;

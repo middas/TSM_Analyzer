@@ -4,6 +4,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:lvc="clr-namespace:LiveCharts.Wpf;assembly=LiveCharts.Wpf"
+        xmlns:control="http://filterdatagrid.control.com/2021"
         mc:Ignorable="d"
         Title="TSM Analyzer" Height="600" Width="800">
     <Grid>
@@ -40,7 +41,7 @@
 
             <Button Content="Filter" HorizontalAlignment="Left" Grid.Column="4" Margin="5 0" Padding="15 0" Command="{Binding FilterCommand}" IsEnabled="{Binding CanFilter}"/>
         </Grid>
-        
+
         <Grid Margin="5" Grid.Row="1">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
@@ -79,20 +80,7 @@
             </lvc:CartesianChart.AxisX>
         </lvc:CartesianChart>
 
-        <DataGrid Grid.Row="3" AutoGenerateColumns="False" ItemsSource="{Binding DataGridModels}" IsReadOnly="True">
-            <DataGrid.Columns>
-                <DataGridTextColumn Header="Time" Binding="{Binding Time, StringFormat=g}" SortDirection="Ascending" />
-                <DataGridTextColumn Header="Item Name" Binding="{Binding ItemName}" />
-                <DataGridTextColumn Header="Price" Binding="{Binding Money}" />
-                <DataGridTextColumn Header="Total" Binding="{Binding Total}" />
-                <DataGridTextColumn Header="Character" Binding="{Binding Character}" />
-                <DataGridTextColumn Header="Quantity" Binding="{Binding Quantity}" />
-                <DataGridTextColumn Header="Stack Size" Binding="{Binding StackSize}" />
-                <DataGridTextColumn Header="Source" Binding="{Binding Source}" />
-                <DataGridTextColumn Header="Type" Binding="{Binding Type}" />
-                <DataGridTextColumn Header="ItemID" Binding="{Binding ItemID}" />
-            </DataGrid.Columns>
-        </DataGrid>
+        <control:FilterDataGrid Grid.Row="3" ItemsSource="{Binding DataGridModels}" IsReadOnly="True" ShowRowsCount="True" ShowStatusBar="True" DateFormatString="g" />
 
         <Grid Grid.Row="4" VerticalAlignment="Bottom" Margin="5">
             <Grid.ColumnDefinitions>

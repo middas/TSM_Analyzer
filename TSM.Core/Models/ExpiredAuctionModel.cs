@@ -22,5 +22,21 @@ namespace TSM.Core.Models
 
         [Name("time")]
         public long TimeEpoch { get; set; }
+
+        public override bool Equals(object? obj)
+        {
+            if (ReferenceEquals(this, obj)) return true;
+            if (obj is ExpiredAuctionModel eam)
+            {
+                return eam.ItemId == ItemId && eam.Player == Player && eam.Quantity == Quantity && eam.StackSize == StackSize && eam.TimeEpoch == TimeEpoch;
+            }
+
+            return false;
+        }
+
+        public override int GetHashCode()
+        {
+            return ItemId.GetHashCode() ^ Player.GetHashCode() ^ Quantity.GetHashCode() ^ StackSize.GetHashCode() ^ TimeEpoch.GetHashCode();
+        }
     }
 }

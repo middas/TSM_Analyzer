@@ -37,5 +37,24 @@ namespace TSM.Core.Models
 
         [Ignore]
         public Money Total => Money * Quantity;
+
+        public override bool Equals(object? obj)
+        {
+            if (ReferenceEquals(this, obj)) return true;
+            if (obj is AuctionBuyModel abm)
+            {
+                return abm.ItemId == ItemId && abm.StackSize == StackSize && abm.Price == Price &&
+                    abm.Quantity == Quantity && abm.OtherPlayer == OtherPlayer && abm.Time == Time
+                    && abm.Player == Player && abm.Source == Source;
+            }
+
+            return false;
+        }
+
+        public override int GetHashCode()
+        {
+            return ItemId.GetHashCode() ^ StackSize.GetHashCode() ^ OtherPlayer.GetHashCode() ^ Time.GetHashCode() ^ Player.GetHashCode()
+                ^ Price.GetHashCode() ^ Quantity.GetHashCode() ^ Source.GetHashCode();
+        }
     }
 }

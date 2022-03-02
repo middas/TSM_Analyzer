@@ -103,6 +103,11 @@ namespace TSM.Data
 
         public async Task StoreAuctionBuys(IEnumerable<core.AuctionBuyModel> auctionBuyModels)
         {
+            if (auctionBuyModels == null || !auctionBuyModels.Any())
+            {
+                return;
+            }
+
             Character[] characters = dbContext.Characters.ToArray();
             var characterBuys = dbContext.CharacterBuys.AsEnumerable().Where(x =>
                 x.BoughtTime >= auctionBuyModels.Min(y => y.Time.UtcDateTime) && x.BoughtTime <= auctionBuyModels.Max(y => y.Time.UtcDateTime)).ToArray();
@@ -146,6 +151,11 @@ namespace TSM.Data
 
         public async Task StoreCancelledAuctions(IEnumerable<core.CancelledAuctionModel> cancelledAuctionModels)
         {
+            if (cancelledAuctionModels == null || !cancelledAuctionModels.Any())
+            {
+                return;
+            }
+
             if (cancelledAuctionModels != null && cancelledAuctionModels.Any())
             {
                 Character[] characters = dbContext.Characters.ToArray();
@@ -178,6 +188,11 @@ namespace TSM.Data
 
         public async Task StoreCharacters(IEnumerable<core.Character> characters)
         {
+            if (characters == null || !characters.Any())
+            {
+                return;
+            }
+
             foreach (var character in characters)
             {
                 Character storeCharacter = await dbContext.Characters.Include(c => c.CharacterReagents).Include(c => c.CharacterBankItems)
@@ -213,6 +228,11 @@ namespace TSM.Data
 
         public async Task StoreCharacterSales(IEnumerable<core.CharacterSaleModel> characterSaleModels)
         {
+            if (characterSaleModels == null || !characterSaleModels.Any())
+            {
+                return;
+            }
+
             Character[] characters = dbContext.Characters.ToArray();
             var characterAuctionSales = dbContext.CharacterAuctionSales.AsEnumerable().Where(x => x.TimeOfSale >= characterSaleModels.Min(y => y.TimeOfSale.UtcDateTime)
                 && x.TimeOfSale <= characterSaleModels.Max(y => y.TimeOfSale.UtcDateTime)).ToArray();
@@ -245,6 +265,11 @@ namespace TSM.Data
 
         public async Task StoreExpiredAuctions(IEnumerable<core.ExpiredAuctionModel> expiredAuctionModels)
         {
+            if (expiredAuctionModels == null || !expiredAuctionModels.Any())
+            {
+                return;
+            }
+
             if (expiredAuctionModels != null && expiredAuctionModels.Any())
             {
                 Character[] characters = dbContext.Characters.ToArray();
@@ -277,6 +302,11 @@ namespace TSM.Data
 
         public async Task StoreItemNames(IDictionary<string, string> items)
         {
+            if (items == null || !items.Any())
+            {
+                return;
+            }
+
             var storeItems = dbContext.Items.Select(x => x.ItemID).ToArray();
 
             foreach (var item in items.Where(x => !storeItems.Contains(x.Key)))

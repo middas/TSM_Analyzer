@@ -1,14 +1,20 @@
 ﻿using SharpCompress.Archives;
+using System.Collections.Immutable;
 using TSM.Core.Models;
 using TSM.Logic.Data_Parser.Exceptions;
+using TSM.Logic.Extensions;
 
 namespace TSM.Logic.Data_Parser
 {
     public class TsmBackupParser
     {
         private const string DefaultLuaBackupFileName = "TradeSkillMaster.lua";
+
         private const string LuaFileExtension = ".lua";
+
         private const string ZipExtension = ".zip";
+
+        public event Action<string> OnStatusUpdated;
 
         public static async Task<BackupModel> ParseBackup(FileInfo backupPath)
         {
@@ -33,6 +39,46 @@ namespace TSM.Logic.Data_Parser
 
             BackupModel backupModel = new(luaModel);
             return backupModel;
+        }
+
+        public async Task<Tuple<BackupModel, ScanFile[]>> ParseBackups(DirectoryInfo backupDirectory, string[] backupsScanned)
+        {
+            HashSet<Character> characters = new();
+            HashSet<AuctionBuyModel> auctionBuyModels = new();
+            HashSet<CharacterSaleModel> characterSaleModels = new();
+            HashSet<ExpiredAuctionModel> expiredAuctionModels = new();
+            HashSet<CancelledAuctionModel> cancelledAuctionModels = new();
+            Dictionary<string, string> itemNames = new();
+            List<ScanFile> scannedFiles = new();
+
+            foreach (var backupFile in backupDirectory.GetFiles().OrderBy(f => f.CreationTime))
+            {
+                if (backupsScanned.Contains(backupFile.FullName))
+                {
+                    continue;
+                }
+
+                OnStatusUpdated?.Invoke($"Parsing {backupFile.Name}");
+                var backup = await TsmBackupParser.ParseBackup(backupFile);
+
+                DateTimeOffset startTime = DateTimeOffset.Now;
+                characters.UnionWith(backup.Characters);
+
+                auctionBuyModels.UnionWith(backup.AuctionBuys);
+
+                characterSaleModels.UnionWith(backup.CharacterSaleModels);
+
+                expiredAuctionModels.UnionWith(backup.ExpiredAuctions);
+
+                cancelledAuctionModels.UnionWith(backup.CancelledAuctions);
+
+                scannedFiles.Add(new ScanFile(backupFile, startTime));
+
+                itemNames.MergeLeft(backup.Items);
+            }
+
+            return new Tuple<BackupModel, ScanFile[]>(new BackupModel(auctionBuyModels, cancelledAuctionModels, characters,
+                characterSaleModels, expiredAuctionModels, itemNames), scannedFiles.ToArray());
         }
 
         private static async Task<FileInfo> ExtractBackupZipContents(FileInfo backupPath)
@@ -66,6 +112,19 @@ namespace TSM.Logic.Data_Parser
             {
                 Console.WriteLine(ex);
                 throw;
+            }
+        }
+
+        public struct ScanFile
+        {
+            public FileInfo FileName;
+
+            public DateTimeOffset ScanTime;
+
+            public ScanFile(FileInfo fileName, DateTimeOffset scanTime)
+            {
+                FileName = fileName;
+                ScanTime = scanTime;
             }
         }
     }

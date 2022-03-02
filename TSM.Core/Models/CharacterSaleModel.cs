@@ -38,5 +38,25 @@ namespace TSM.Core.Models
         {
             return $"{Character} - {ItemID} - {Money}";
         }
+
+        public override bool Equals(object? obj)
+        {
+            if(ReferenceEquals(this, obj)) return true;
+            if(obj is CharacterSaleModel csm)
+            {
+                return csm.Character == Character && csm.ItemID == ItemID && csm.Price == Price && 
+                    csm.Quantity == Quantity && csm.Source == Source && csm.StackSize == StackSize && 
+                    csm.Time == Time;
+            }
+
+            return false;
+        }
+
+        public override int GetHashCode()
+        {
+            return Character.GetHashCode() ^ ItemID.GetHashCode() ^ Price.GetHashCode() ^ 
+                Quantity.GetHashCode() ^ Source.GetHashCode() ^ StackSize.GetHashCode() ^ 
+                Time.GetHashCode();
+        }
     }
 }

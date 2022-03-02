@@ -23,9 +23,20 @@ namespace TSM.Core.Models
         [Name("time")]
         public long TimeEpoch { get; set; }
 
-        //public override string ToString()
-        //{
-        //    return $"{ItemId} - {Time}";
-        //}
+        public override bool Equals(object? obj)
+        {
+            if (ReferenceEquals(this, obj)) return true;
+            if (obj is CancelledAuctionModel cam)
+            {
+                return cam.ItemId == ItemId && cam.StackSize == StackSize && cam.PlayerName == PlayerName && cam.Quantity == Quantity && cam.TimeEpoch == TimeEpoch;
+            }
+
+            return false;
+        }
+
+        public override int GetHashCode()
+        {
+            return ItemId.GetHashCode() ^ StackSize.GetHashCode() ^ PlayerName.GetHashCode() ^ Quantity.GetHashCode() ^ TimeEpoch.GetHashCode();
+        }
     }
 }
