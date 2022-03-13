@@ -9,7 +9,7 @@ namespace TSM.Core.Models
         public string ItemId { get; set; }
 
         [Ignore]
-        public Money Money => new(Price);
+        public Money Money => Price;
 
         [Name("otherPlayer")]
         public string OtherPlayer { get; set; }

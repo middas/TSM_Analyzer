@@ -73,15 +73,7 @@ namespace TSM.Data
             var storeCharacters = await dbContext.Characters.Include(c => c.CharacterMailItems).Include(c => c.CharacterBankItems)
                 .Include(c => c.CharacterReagents).Include(c => c.CharacterInventoryItems).ToArrayAsync();
 
-            return storeCharacters.Select(c => new core.Character(c.Name, Enum.Parse<core.Faction>(c.Faction), c.Realm)
-            {
-                BagItems = c.CharacterInventoryItems.ToDictionary(x => x.ItemID, x => x.Quantity),
-                BankItems = c.CharacterBankItems.ToDictionary(x => x.ItemID, x => x.Quantity),
-                Class = c.Class,
-                MailItems = c.CharacterMailItems.ToDictionary(x => x.ItemID, x => x.Count),
-                Money = new core.Money(c.Copper),
-                ReagentItems = c.CharacterReagents.ToDictionary(x => x.ItemID, x => x.Quantity)
-            }).ToArray();
+            return storeCharacters.Select(c => (core.Character)c).ToArray();
         }
 
         public async Task<IEnumerable<core.ExpiredAuctionModel>> GetExpiredAuctionModels()

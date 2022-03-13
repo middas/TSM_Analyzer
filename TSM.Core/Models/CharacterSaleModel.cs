@@ -11,7 +11,7 @@ namespace TSM.Core.Models
         public string ItemID { get; set; }
 
         [Ignore]
-        public Money Money => new(Price);
+        public Money Money => Price;
 
         [Name("price")]
         public long Price { get; set; }

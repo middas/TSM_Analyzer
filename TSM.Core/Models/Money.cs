@@ -21,13 +21,15 @@
 
         public long TotalCopper => totalCopper;
 
-        public static Money operator -(Money a, Money b) => new(a.TotalCopper - b.TotalCopper);
+        public static Money operator -(Money a, Money b) => a.TotalCopper - b.TotalCopper;
 
-        public static Money operator -(Money a) => new(-a.totalCopper);
+        public static Money operator -(Money a) => -a.totalCopper;
 
-        public static Money operator +(Money a, Money b) => new(a.TotalCopper + b.totalCopper);
+        public static Money operator +(Money a, Money b) => a.TotalCopper + b.totalCopper;
 
-        public static Money operator *(Money a, int b) => new(a.totalCopper * b);
+        public static Money operator *(Money a, int b) => a.totalCopper * b;
+
+        public static implicit operator Money(long copper) => new(copper);
 
         public int CompareTo(Money? other)
         {

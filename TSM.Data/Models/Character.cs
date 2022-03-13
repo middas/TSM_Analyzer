@@ -48,5 +48,15 @@ namespace TSM.Data.Models
         [Required]
         [MaxLength(255)]
         public string Realm { get; set; }
+
+        public static explicit operator Core.Models.Character(Character c) => new(c.Name, Enum.Parse<Core.Models.Faction>(c.Faction, true), c.Realm)
+        {
+            Class = c.Class,
+            Money = c.Copper,
+            BagItems = c.CharacterInventoryItems.ToDictionary(x => x.ItemID, x => x.Quantity),
+            BankItems = c.CharacterBankItems.ToDictionary(x => x.ItemID, x => x.Quantity),
+            MailItems = c.CharacterMailItems.ToDictionary(x => x.ItemID, x => x.Count),
+            ReagentItems = c.CharacterReagents.ToDictionary(x => x.ItemID, x => x.Quantity)
+        };
     }
 }

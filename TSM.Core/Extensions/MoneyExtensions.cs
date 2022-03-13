@@ -11,7 +11,7 @@ namespace TSM.Core.Extensions
 
         public static Money Sum(this IEnumerable<Money> money)
         {
-            Money result = new(0);
+            Money result = 0;
             foreach (Money moneyItem in money)
             {
                 result += moneyItem;

@@ -132,7 +132,7 @@ namespace TSM.Core.Models
                             break;
 
                         case "money":
-                            character.Money = new Money(long.Parse(characterLuaModel.Value));
+                            character.Money = long.Parse(characterLuaModel.Value);
                             break;
 
                         case "mailQuantity":

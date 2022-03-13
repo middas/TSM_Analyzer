@@ -80,7 +80,20 @@
             </lvc:CartesianChart.AxisX>
         </lvc:CartesianChart>
 
-        <control:FilterDataGrid Grid.Row="3" ItemsSource="{Binding DataGridModels}" IsReadOnly="True" ShowRowsCount="True" ShowStatusBar="True" DateFormatString="g" />
+        <control:FilterDataGrid Grid.Row="3" ItemsSource="{Binding DataGridModels}" IsReadOnly="True" ShowRowsCount="True" ShowStatusBar="True" DateFormatString="g" AutoGenerateColumns="False">
+            <control:FilterDataGrid.Columns>
+                <control:DataGridTextColumn Header="Time" Binding="{Binding Time}" IsColumnFiltered="True" />
+                <control:DataGridTextColumn Header="Item Name" Binding="{Binding ItemName}" IsColumnFiltered="True" />
+                <control:DataGridTextColumn Header="Total" Binding="{Binding Total}" IsColumnFiltered="True"/>
+                <control:DataGridTextColumn Header="Quantity" Binding="{Binding Quantity}" IsColumnFiltered="True"/>
+                <control:DataGridTextColumn Header="Character" Binding="{Binding Character}" IsColumnFiltered="True"/>
+                <control:DataGridTextColumn Header="Money" Binding="{Binding Money}" IsColumnFiltered="True"/>
+                <control:DataGridTextColumn Header="Stack Size" Binding="{Binding StackSize}" IsColumnFiltered="True"/>
+                <control:DataGridTextColumn Header="Source" Binding="{Binding Source}" IsColumnFiltered="True"/>
+                <control:DataGridTextColumn Header="Type" Binding="{Binding Type}" IsColumnFiltered="True"/>
+                <control:DataGridTextColumn Header="ItemID" Binding="{Binding ItemID}" IsColumnFiltered="True"/>
+            </control:FilterDataGrid.Columns>
+        </control:FilterDataGrid>
 
         <Grid Grid.Row="4" VerticalAlignment="Bottom" Margin="5">
             <Grid.ColumnDefinitions>

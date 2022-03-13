@@ -72,10 +72,10 @@ namespace TSM_Analyzer.ViewModels
         private ObservableCollection<string> labels;
         private DataGridColumn selectedColumn;
         private SeriesCollection series;
-        private Money totalGold = new(0);
-        private Money totalProfit = new(0);
-        private Money totalPurchases = new(0);
-        private Money totalSales = new(0);
+        private Money totalGold = 0;
+        private Money totalProfit = 0;
+        private Money totalPurchases = 0;
+        private Money totalSales = 0;
 
         public MainWindowViewModel(IDataStore dataStore)
         {
@@ -292,7 +292,7 @@ namespace TSM_Analyzer.ViewModels
 
         private async Task PopulateAuctionData()
         {
-            TotalProfit = TotalSales = TotalPurchases = new(0);
+            TotalProfit = TotalSales = TotalPurchases = 0;
 
             try
             {
@@ -334,18 +334,18 @@ namespace TSM_Analyzer.ViewModels
 
         private void PopulateChartData()
         {
-            GoldLabelFormatter = c => new Money((long)c).ToString();
+            GoldLabelFormatter = c => ((Money)(long)c).ToString();
             var valuesByDate = new Dictionary<DateTimeOffset, BoughtSold>();
             var sold = characterSaleModels.GroupBy(x => x.TimeOfSale.LocalDateTime.Date).Select(x => new { x.Key, Money = x.Select(y => y.Total).Sum() });
             var bought = auctionBuyModels.GroupBy(x => x.Time.LocalDateTime.Date).Select(x => new { x.Key, Money = x.Select(y => y.Total).Sum() });
 
-            Money prevDay = new(0);
+            Money prevDay = 0;
             foreach (var date in EnumerateDays(FilterFrom.Date, FilterTo))
             {
                 valuesByDate[date] = new BoughtSold(prevDay)
                 {
-                    Bought = bought.SingleOrDefault(x => x.Key == date)?.Money ?? new Money(0),
-                    Sold = sold.SingleOrDefault(x => x.Key == date)?.Money ?? new Money(0),
+                    Bought = bought.SingleOrDefault(x => x.Key == date)?.Money ?? 0,
+                    Sold = sold.SingleOrDefault(x => x.Key == date)?.Money ?? 0,
                 };
 
                 prevDay = valuesByDate[date].RunningTotal;
@@ -360,21 +360,21 @@ namespace TSM_Analyzer.ViewModels
                     Title = "Auction Sold Value",
                     Values = new ChartValues<long>(valuesByDate.Select(x => x.Value.Sold.TotalCopper)),
                     PointGeometry = null,
-                    LabelPoint = point => new Money((long)point.Y).ToString()
+                    LabelPoint = point => ((Money)(long)point.Y).ToString()
                 },
                 new LineSeries
                 {
                     Title = "Auction Bought Value",
                     Values = new ChartValues<long>(valuesByDate.Select(x => -x.Value.Bought.TotalCopper)),
                     PointGeometry = null,
-                    LabelPoint = point => new Money((long)point.Y).ToString()
+                    LabelPoint = point => ((Money)(long)point.Y).ToString()
                 },
                 new LineSeries
                 {
                     Title = "Total Profit",
                     Values = new ChartValues<long>(valuesByDate.Select(x => (x.Value.RunningTotal).TotalCopper)),
                     PointGeometry = null,
-                    LabelPoint = point => new Money((long)point.Y).ToString()
+                    LabelPoint = point => ((Money)(long)point.Y).ToString()
                 }
             };
         }

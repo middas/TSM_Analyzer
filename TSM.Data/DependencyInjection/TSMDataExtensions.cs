@@ -6,11 +6,13 @@ namespace TSM.Data.DependencyInjection
 {
     public static class TSMDataExtensions
     {
-        public static ServiceCollection ConfigureTSMData(this ServiceCollection service)
+        public static ServiceCollection ConfigureTSMData(this ServiceCollection service, string dbPath)
         {
+            Directory.CreateDirectory(Path.GetDirectoryName(dbPath));
+
             service.AddDbContext<SqlLiteDbContext>(options =>
             {
-                options.UseSqlite("Data Source = TSM.db");
+                options.UseSqlite($"Data Source = {dbPath}");
             });
             service.AddTransient<IDataStore, DataStore>();
 

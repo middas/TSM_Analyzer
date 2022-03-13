@@ -1,4 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using System;
+using System.IO;
 using System.Windows;
 using TSM.Core.LocalStorage;
 using TSM.Logic.DependencyInjection;
@@ -10,6 +12,8 @@ namespace TSM_Analyzer
     /// </summary>
     public partial class App : Application
     {
+        private static readonly string dataStorePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TSM Analyzer", "TSM.db");
+
         private readonly ServiceProvider serviceProvider;
 
         public App()
@@ -28,7 +32,7 @@ namespace TSM_Analyzer
 
         private void ConfigureServices(ServiceCollection services)
         {
-            services.ConfigureTSMLogic();
+            services.ConfigureTSMLogic(dataStorePath);
             services.AddSingleton<MainWindow>();
         }
 
