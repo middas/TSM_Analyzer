@@ -78,14 +78,38 @@ namespace TSM.Data
 
         public async Task<IEnumerable<core.ExpiredAuctionModel>> GetExpiredAuctionModels()
         {
-            return await dbContext.CharacterExpiredAuctions.Select(x => new core.ExpiredAuctionModel
+            if (await dbContext.CharacterExpiredAuctions.AnyAsync(x => x.Hash == 0))
+            {
+                var dbModels = dbContext.CharacterExpiredAuctions.Where(x => x.Hash == 0);
+
+                foreach (var m in dbModels)
+                {
+                    var tempModel = new core.ExpiredAuctionModel
+                    {
+                        ItemId = m.ItemID,
+                        Player = m.Character.Name,
+                        Quantity = m.Quantity,
+                        StackSize = m.StackSize,
+                        TimeEpoch = new DateTimeOffset(m.ExpiredTime, TimeSpan.Zero).ToUnixTimeSeconds()
+                    };
+
+                    m.Hash = tempModel.GetHashCode();
+                }
+
+                await dbContext.SaveChangesAsync();
+            }
+
+            var models = await dbContext.CharacterExpiredAuctions.Select(x => new core.ExpiredAuctionModel
             {
                 ItemId = x.ItemID,
                 Player = x.Character.Name,
                 Quantity = x.Quantity,
                 StackSize = x.StackSize,
-                TimeEpoch = new DateTimeOffset(x.ExpiredTime, TimeSpan.Zero).ToUnixTimeSeconds()
+                TimeEpoch = new DateTimeOffset(x.ExpiredTime, TimeSpan.Zero).ToUnixTimeSeconds(),
+                Hash = x.Hash
             }).ToArrayAsync();
+
+            return models;
         }
 
         public Task<Dictionary<string, string>> GetItems()

@@ -46,7 +46,7 @@
 
         public override string ToString()
         {
-            return $"{$"{Gold:n0}"}g{Silver}s{Copper}c";
+            return $"{$"{(TotalCopper < 0 ? "-" : string.Empty)}{Math.Abs(Gold):n0}"}g{Math.Abs(Silver)}s{Math.Abs(Copper)}c";
         }
     }
 }

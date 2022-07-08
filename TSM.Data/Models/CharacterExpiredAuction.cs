@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace TSM.Data.Models
@@ -29,5 +30,9 @@ namespace TSM.Data.Models
 
         [Required]
         public int StackSize { get; set; }
+
+        [Required]
+        [DefaultValue(0)]
+        public int Hash { get; set; }
     }
 }

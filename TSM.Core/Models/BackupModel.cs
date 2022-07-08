@@ -197,6 +197,11 @@ namespace TSM.Core.Models
                 expiredAuctions.AddRange(ParseCsv<ExpiredAuctionModel>(lm));
             }
 
+            foreach (var expiredAuction in expiredAuctions)
+            {
+                expiredAuction.Hash = expiredAuction.GetHashCode();
+            }
+
             ExpiredAuctions = expiredAuctions.ToImmutableArray();
         }
 
