@@ -308,7 +308,9 @@ namespace TSM_Analyzer.ViewModels
                     TotalSales = characterSaleModels.Where(x => x.Source.Equals("auction", StringComparison.OrdinalIgnoreCase)).Select(x => x.Total).Sum();
                 }
 
-                var minDate = DateTimeOffset.FromUnixTimeSeconds(Math.Min(auctionBuyModels.Min(x => x.TimeEpoch), characterSaleModels.Min(x => x.Time)));
+                var buyMin = auctionBuyModels.Any() ? auctionBuyModels.Min(x => x.TimeEpoch) : DateTimeOffset.Now.ToUnixTimeSeconds();
+                var saleMin = characterSaleModels.Any() ? characterSaleModels.Min(x => x.Time) : DateTimeOffset.Now.ToUnixTimeSeconds();
+                var minDate = DateTimeOffset.FromUnixTimeSeconds(Math.Min(buyMin, saleMin));
                 if (FilterFrom < minDate.Date)
                 {
                     FilterFrom = minDate.Date;

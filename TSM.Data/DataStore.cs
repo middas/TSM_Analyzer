@@ -125,28 +125,32 @@ namespace TSM.Data
             }
 
             Character[] characters = dbContext.Characters.ToArray();
-            var characterBuys = dbContext.CharacterBuys.AsEnumerable().Where(x =>
-                x.BoughtTime >= auctionBuyModels.Min(y => y.Time.UtcDateTime) && x.BoughtTime <= auctionBuyModels.Max(y => y.Time.UtcDateTime)).ToArray();
+            var minDate = await dbContext.CharacterBuys.Select(x => x.BoughtTime).Distinct().OrderByDescending(x => x).Skip(1).FirstOrDefaultAsync();
+            var characterBuys = dbContext.CharacterBuys.Where(x => x.BoughtTime >= minDate).ToArray();
 
-            foreach (var auctionBuyModel in auctionBuyModels)
+            var characterGroupedAuctionBuyModels = auctionBuyModels.Where(x => x.Time >= minDate).GroupBy(x => x.Player);
+            foreach (var characterGroupedAuctionBuyModel in characterGroupedAuctionBuyModels)
             {
-                CharacterBuy storeCharacterBuy = characterBuys.FirstOrDefault(x => x.ItemID == auctionBuyModel.ItemId
-                    && x.BoughtTime == auctionBuyModel.Time.UtcDateTime && x.Source == auctionBuyModel.Source && x.Quantity == auctionBuyModel.Quantity);
+                var character = characters.Single(c => c.Name == characterGroupedAuctionBuyModel.Key);
 
-                if (storeCharacterBuy == null)
+                foreach (var auctionBuyModel in characterGroupedAuctionBuyModel)
                 {
-                    storeCharacterBuy = new()
+                    if (!characterBuys.Any(x => x.ItemID == auctionBuyModel.ItemId
+                     && x.BoughtTime == auctionBuyModel.Time.UtcDateTime && x.Source == auctionBuyModel.Source && x.Quantity == auctionBuyModel.Quantity))
                     {
-                        BoughtTime = auctionBuyModel.Time.UtcDateTime,
-                        Character = characters.Single(c => c.Name == auctionBuyModel.Player),
-                        Copper = auctionBuyModel.Money.TotalCopper,
-                        ItemID = auctionBuyModel.ItemId,
-                        Quantity = auctionBuyModel.Quantity,
-                        Source = auctionBuyModel.Source,
-                        StackSize = auctionBuyModel.StackSize
-                    };
+                        CharacterBuy storeCharacterBuy = new()
+                        {
+                            BoughtTime = auctionBuyModel.Time.UtcDateTime,
+                            Character = characters.Single(c => c.Name == auctionBuyModel.Player),
+                            Copper = auctionBuyModel.Money.TotalCopper,
+                            ItemID = auctionBuyModel.ItemId,
+                            Quantity = auctionBuyModel.Quantity,
+                            Source = auctionBuyModel.Source,
+                            StackSize = auctionBuyModel.StackSize
+                        };
 
-                    await dbContext.AddAsync(storeCharacterBuy);
+                        await dbContext.AddAsync(storeCharacterBuy);
+                    }
                 }
             }
 
@@ -175,26 +179,30 @@ namespace TSM.Data
             if (cancelledAuctionModels != null && cancelledAuctionModels.Any())
             {
                 Character[] characters = dbContext.Characters.ToArray();
-                var characterCancelledAuctions = dbContext.CharacterCancelledAuctions.AsEnumerable().Where(x =>
-                    x.CancelledTime >= cancelledAuctionModels.Min(y => y.Time.UtcDateTime) && x.CancelledTime <= cancelledAuctionModels.Max(y => y.Time.UtcDateTime)).ToArray();
+                var minDate = await dbContext.CharacterCancelledAuctions.Select(x => x.CancelledTime).Distinct().OrderByDescending(x => x).Skip(1).FirstOrDefaultAsync();
+                var characterCancelledAuctions = dbContext.CharacterCancelledAuctions.Where(x => x.CancelledTime >= minDate).ToArray();
 
-                foreach (var cancelledAuctionModel in cancelledAuctionModels)
+                var characterGroupedCancelledAuctionModels = cancelledAuctionModels.Where(x => x.Time >= minDate).GroupBy(x => x.PlayerName);
+                foreach (var characterGroupedCancelledAuctionModel in characterGroupedCancelledAuctionModels)
                 {
-                    CharacterCancelledAuction storeCharacterCancelledAuction = characterCancelledAuctions.FirstOrDefault(x => x.ItemID == cancelledAuctionModel.ItemId
-                        && x.CancelledTime == cancelledAuctionModel.Time.UtcDateTime);
+                    var character = characters.Single(c => c.Name == characterGroupedCancelledAuctionModel.Key);
 
-                    if (storeCharacterCancelledAuction == null)
+                    foreach (var cancelledAuctionModel in characterGroupedCancelledAuctionModel)
                     {
-                        storeCharacterCancelledAuction = new()
+                        if (!characterCancelledAuctions.Any(x => x.ItemID == cancelledAuctionModel.ItemId
+                         && x.CancelledTime == cancelledAuctionModel.Time.UtcDateTime))
                         {
-                            CancelledTime = cancelledAuctionModel.Time.UtcDateTime,
-                            Character = characters.Single(c => c.Name == cancelledAuctionModel.PlayerName),
-                            ItemID = cancelledAuctionModel.ItemId,
-                            Quantity = cancelledAuctionModel.Quantity,
-                            StackSize = cancelledAuctionModel.StackSize
-                        };
+                            CharacterCancelledAuction storeCharacterCancelledAuction = new()
+                            {
+                                CancelledTime = cancelledAuctionModel.Time.UtcDateTime,
+                                Character = characters.Single(c => c.Name == cancelledAuctionModel.PlayerName),
+                                ItemID = cancelledAuctionModel.ItemId,
+                                Quantity = cancelledAuctionModel.Quantity,
+                                StackSize = cancelledAuctionModel.StackSize
+                            };
 
-                        await dbContext.AddAsync(storeCharacterCancelledAuction);
+                            await dbContext.AddAsync(storeCharacterCancelledAuction);
+                        }
                     }
                 }
 
@@ -250,29 +258,33 @@ namespace TSM.Data
             }
 
             Character[] characters = dbContext.Characters.ToArray();
-            var characterAuctionSales = dbContext.CharacterAuctionSales.AsEnumerable().Where(x => x.TimeOfSale >= characterSaleModels.Min(y => y.TimeOfSale.UtcDateTime)
-                && x.TimeOfSale <= characterSaleModels.Max(y => y.TimeOfSale.UtcDateTime)).ToArray();
+            var minDate = await dbContext.CharacterAuctionSales.Select(x => x.TimeOfSale).Distinct().OrderByDescending(x => x).Skip(1).FirstOrDefaultAsync();
+            var characterAuctionSales = dbContext.CharacterAuctionSales.AsEnumerable().Where(x => x.TimeOfSale >= minDate).ToArray();
 
-            foreach (var characterSaleModel in characterSaleModels)
+            var saleModelsByCharacter = characterSaleModels.Where(x => x.TimeOfSale >= minDate).GroupBy(x => x.Character);
+            foreach (var groupedCharacterSaleModel in saleModelsByCharacter)
             {
-                CharacterAuctionSale storeCharacterAuctionSale = characterAuctionSales.FirstOrDefault(x => x.ItemID == characterSaleModel.ItemID
-                    && x.TimeOfSale == characterSaleModel.TimeOfSale.UtcDateTime && x.Copper == characterSaleModel.Money.TotalCopper && x.Quantity == characterSaleModel.Quantity
-                    && x.StackSize == characterSaleModel.StackSize);
+                var character = characters.Single(c => c.Name == groupedCharacterSaleModel.Key);
 
-                if (storeCharacterAuctionSale == null)
+                foreach (var characterSaleModel in groupedCharacterSaleModel)
                 {
-                    storeCharacterAuctionSale = new()
+                    if (!characterAuctionSales.Any(x => x.ItemID == characterSaleModel.ItemID
+                     && x.TimeOfSale == characterSaleModel.TimeOfSale.UtcDateTime && x.Copper == characterSaleModel.Money.TotalCopper && x.Quantity == characterSaleModel.Quantity
+                     && x.StackSize == characterSaleModel.StackSize))
                     {
-                        Character = characters.Single(c => c.Name == characterSaleModel.Character),
-                        Copper = characterSaleModel.Money.TotalCopper,
-                        ItemID = characterSaleModel.ItemID,
-                        Quantity = characterSaleModel.Quantity,
-                        TimeOfSale = characterSaleModel.TimeOfSale.UtcDateTime,
-                        Source = characterSaleModel.Source,
-                        StackSize = characterSaleModel.StackSize
-                    };
+                        CharacterAuctionSale storeCharacterAuctionSale = new()
+                        {
+                            Character = character,
+                            Copper = characterSaleModel.Money.TotalCopper,
+                            ItemID = characterSaleModel.ItemID,
+                            Quantity = characterSaleModel.Quantity,
+                            TimeOfSale = characterSaleModel.TimeOfSale.UtcDateTime,
+                            Source = characterSaleModel.Source,
+                            StackSize = characterSaleModel.StackSize
+                        };
 
-                    await dbContext.AddAsync(storeCharacterAuctionSale);
+                        await dbContext.AddAsync(storeCharacterAuctionSale);
+                    }
                 }
             }
 
@@ -288,24 +300,24 @@ namespace TSM.Data
 
             if (expiredAuctionModels != null && expiredAuctionModels.Any())
             {
+                var minDate = await dbContext.CharacterExpiredAuctions.Select(x => x.ExpiredTime).Distinct().OrderByDescending(x => x).Skip(1).FirstOrDefaultAsync();
                 Character[] characters = dbContext.Characters.ToArray();
-                var characterExpiredAuctions = dbContext.CharacterExpiredAuctions.AsEnumerable().Where(x =>
-                    x.ExpiredTime >= expiredAuctionModels.Min(y => y.Time.UtcDateTime) && x.ExpiredTime <= expiredAuctionModels.Max(y => y.Time.UtcDateTime)).ToArray();
+                var characterExpiredAuctions = dbContext.CharacterExpiredAuctions.Where(x => x.ExpiredTime >= minDate).Select(x => x.Hash).ToArray();
 
-                foreach (var expiredAuctionModel in expiredAuctionModels)
+                foreach (var characterGroupedExpiredAuctions in expiredAuctionModels.GroupBy(x => x.Player))
                 {
-                    CharacterExpiredAuction storeCharacterExpiredAuction = characterExpiredAuctions.FirstOrDefault(x => x.ItemID == expiredAuctionModel.ItemId
-                        && x.ExpiredTime == expiredAuctionModel.Time.UtcDateTime);
+                    Character character = characters.Single(c => c.Name == characterGroupedExpiredAuctions.Key);
 
-                    if (storeCharacterExpiredAuction == null)
+                    foreach (var expiredAuctionModel in characterGroupedExpiredAuctions.Where(x => x.Time >= minDate && !characterExpiredAuctions.Any(h => x.Hash == h)))
                     {
-                        storeCharacterExpiredAuction = new()
+                        CharacterExpiredAuction storeCharacterExpiredAuction = new()
                         {
-                            Character = characters.Single(c => c.Name == expiredAuctionModel.Player),
+                            Character = character,
                             ExpiredTime = expiredAuctionModel.Time.UtcDateTime,
                             ItemID = expiredAuctionModel.ItemId,
                             Quantity = expiredAuctionModel.Quantity,
-                            StackSize = expiredAuctionModel.StackSize
+                            StackSize = expiredAuctionModel.StackSize,
+                            Hash = expiredAuctionModel.Hash
                         };
 
                         await dbContext.AddAsync(storeCharacterExpiredAuction);

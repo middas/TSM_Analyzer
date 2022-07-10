@@ -23,6 +23,7 @@ namespace TSM.Core.Models
         [Name("time")]
         public long TimeEpoch { get; set; }
 
+        [Ignore]
         public int Hash { get; set; }
 
         public override bool Equals(object? obj)

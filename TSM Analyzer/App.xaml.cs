@@ -12,7 +12,11 @@ namespace TSM_Analyzer
     /// </summary>
     public partial class App : Application
     {
+#if RELEASE
         private static readonly string dataStorePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TSM Analyzer", "TSM.db");
+#else
+        private static readonly string dataStorePath = "TSM.db";
+#endif
 
         private readonly ServiceProvider serviceProvider;
 

@@ -8,7 +8,12 @@ namespace TSM.Data.DependencyInjection
     {
         public static ServiceCollection ConfigureTSMData(this ServiceCollection service, string dbPath)
         {
-            Directory.CreateDirectory(Path.GetDirectoryName(dbPath));
+            string? dirPath = Path.GetDirectoryName(dbPath);
+
+            if (!string.IsNullOrEmpty(dirPath))
+            {
+                Directory.CreateDirectory(dirPath);
+            }
 
             service.AddDbContext<SqlLiteDbContext>(options =>
             {
