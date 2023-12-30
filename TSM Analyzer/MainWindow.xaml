@@ -88,7 +88,7 @@
 
         <control:FilterDataGrid Grid.Row="3" ItemsSource="{Binding DataGridModels}" IsReadOnly="True" ShowRowsCount="True" ShowStatusBar="True" DateFormatString="g" AutoGenerateColumns="False">
             <control:FilterDataGrid.Columns>
-                <control:DataGridTextColumn Header="Time" Binding="{Binding Time}" IsColumnFiltered="True" />
+                <control:DataGridTextColumn Header="Time" Binding="{Binding Time}" IsColumnFiltered="True" SortDirection="Descending" />
                 <control:DataGridTextColumn Header="Item Name" Binding="{Binding ItemName}" IsColumnFiltered="True" />
                 <control:DataGridTextColumn Header="Total" Binding="{Binding Total}" IsColumnFiltered="True"/>
                 <control:DataGridTextColumn Header="Quantity" Binding="{Binding Quantity}" IsColumnFiltered="True"/>

@@ -476,7 +476,7 @@ namespace TSM_Analyzer.ViewModels
                 // no data
             }
 
-            DataGridModels = CollectionViewSource.GetDefaultView(models.OrderBy(x => x.Time));
+            DataGridModels = CollectionViewSource.GetDefaultView(models.OrderByDescending(x => x.Time));
         }
 
         private async Task ScanBackups()
