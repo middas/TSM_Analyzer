@@ -168,15 +168,15 @@ namespace TSM.Core.Models
         private void PopulateCharacterSales()
         {
             //r@Korialstrasz@internalData@csvSales
-            List<CharacterSaleModel> sharacterSaleModels = new();
+            List<CharacterSaleModel> characterSaleModels = new();
             LuaModel data = backingLuaModel[TradeSkillData];
 
             foreach (var lm in data.Children.Where(x => x.Key.EndsWith("csvSales")))
             {
-                sharacterSaleModels.AddRange(ParseCsv<CharacterSaleModel>(lm));
+                characterSaleModels.AddRange(ParseCsv<CharacterSaleModel>(lm));
             }
 
-            CharacterSaleModels = sharacterSaleModels.ToImmutableArray();
+            CharacterSaleModels = characterSaleModels.ToImmutableArray();
         }
 
         private void PopulateData()

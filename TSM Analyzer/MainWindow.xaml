@@ -47,6 +47,7 @@
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
                 <ColumnDefinition />
             </Grid.ColumnDefinitions>
 
@@ -66,6 +67,11 @@
             </TextBlock>
 
             <TextBlock Grid.Column="3" Margin="5 0">
+                <Run>Total Vendor Sales:</Run>
+                <Run Text="{Binding TotalVendorSales, Mode=OneWay}" />
+            </TextBlock>
+            
+            <TextBlock Grid.Column="4" Margin="5 0">
                 <Run>Total Auction Profit:</Run>
                 <Run Text="{Binding TotalProfit, Mode=OneWay}" />
             </TextBlock>

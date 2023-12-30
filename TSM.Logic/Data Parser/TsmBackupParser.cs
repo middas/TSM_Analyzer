@@ -59,7 +59,7 @@ namespace TSM.Logic.Data_Parser
                 }
 
                 OnStatusUpdated?.Invoke($"Parsing {backupFile.Name}");
-                var backup = await TsmBackupParser.ParseBackup(backupFile);
+                var backup = await ParseBackup(backupFile);
 
                 DateTimeOffset startTime = DateTimeOffset.Now;
                 characters.UnionWith(backup.Characters);

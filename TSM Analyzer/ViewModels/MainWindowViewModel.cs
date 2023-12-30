@@ -76,6 +76,7 @@ namespace TSM_Analyzer.ViewModels
         private Money totalProfit = 0;
         private Money totalPurchases = 0;
         private Money totalSales = 0;
+        private Money totalVendorSales = 0;
 
         public MainWindowViewModel(IDataStore dataStore)
         {
@@ -92,6 +93,7 @@ namespace TSM_Analyzer.ViewModels
         public string BackupStatus
         {
             get => backupStatus;
+
             set
             {
                 backupStatus = value;
@@ -102,6 +104,7 @@ namespace TSM_Analyzer.ViewModels
         public bool CanFilter
         {
             get => canFilter;
+
             set
             {
                 canFilter = value;
@@ -112,6 +115,7 @@ namespace TSM_Analyzer.ViewModels
         public bool CanLookupItems
         {
             get => canLookupItems;
+
             set
             {
                 canLookupItems = value;
@@ -122,6 +126,7 @@ namespace TSM_Analyzer.ViewModels
         public bool CanScan
         {
             get => canScan;
+
             set
             {
                 canScan = value;
@@ -132,6 +137,7 @@ namespace TSM_Analyzer.ViewModels
         public ICollectionView DataGridModels
         {
             get => dataGridModels;
+
             set
             {
                 dataGridModels = value;
@@ -144,6 +150,7 @@ namespace TSM_Analyzer.ViewModels
         public DateTime FilterFrom
         {
             get => filterFrom;
+
             set
             {
                 filterFrom = value;
@@ -154,6 +161,7 @@ namespace TSM_Analyzer.ViewModels
         public DateTime FilterTo
         {
             get => filterTo;
+
             set
             {
                 filterTo = value;
@@ -164,6 +172,7 @@ namespace TSM_Analyzer.ViewModels
         public Func<double, string> GoldLabelFormatter
         {
             get => goldLabelFormatter;
+
             set
             {
                 goldLabelFormatter = value;
@@ -174,6 +183,7 @@ namespace TSM_Analyzer.ViewModels
         public ObservableCollection<string> Labels
         {
             get => labels;
+
             set
             {
                 labels = value;
@@ -188,6 +198,7 @@ namespace TSM_Analyzer.ViewModels
         public DataGridColumn SelectedColumn
         {
             get => selectedColumn;
+
             set
             {
                 selectedColumn = value;
@@ -198,6 +209,7 @@ namespace TSM_Analyzer.ViewModels
         public SeriesCollection Series
         {
             get => series;
+
             set
             {
                 series = value;
@@ -208,6 +220,7 @@ namespace TSM_Analyzer.ViewModels
         public Money TotalGold
         {
             get => totalGold;
+
             set
             {
                 totalGold = value;
@@ -218,6 +231,7 @@ namespace TSM_Analyzer.ViewModels
         public Money TotalProfit
         {
             get => totalProfit;
+
             set
             {
                 totalProfit = value;
@@ -228,6 +242,7 @@ namespace TSM_Analyzer.ViewModels
         public Money TotalPurchases
         {
             get => totalPurchases;
+
             set
             {
                 totalPurchases = value;
@@ -238,9 +253,21 @@ namespace TSM_Analyzer.ViewModels
         public Money TotalSales
         {
             get => totalSales;
+
             set
             {
                 totalSales = value;
+                FirePropertyChanged();
+            }
+        }
+
+        public Money TotalVendorSales
+        {
+            get => totalVendorSales;
+
+            set
+            {
+                totalVendorSales = value;
                 FirePropertyChanged();
             }
         }
@@ -306,6 +333,11 @@ namespace TSM_Analyzer.ViewModels
                 if (characterSaleModels != null && characterSaleModels.Any(x => x.Source.Equals("auction", StringComparison.OrdinalIgnoreCase)))
                 {
                     TotalSales = characterSaleModels.Where(x => x.Source.Equals("auction", StringComparison.OrdinalIgnoreCase)).Select(x => x.Total).Sum();
+                }
+
+                if (characterSaleModels != null && characterSaleModels.Any(x => x.Source.Equals("vendor", StringComparison.OrdinalIgnoreCase)))
+                {
+                    TotalVendorSales = characterSaleModels.Where(x => x.Source.Equals("vendor", StringComparison.OrdinalIgnoreCase)).Select(x => x.Total).Sum();
                 }
 
                 var buyMin = auctionBuyModels.Any() ? auctionBuyModels.Min(x => x.TimeEpoch) : DateTimeOffset.Now.ToUnixTimeSeconds();
@@ -444,7 +476,7 @@ namespace TSM_Analyzer.ViewModels
                 // no data
             }
 
-            DataGridModels = CollectionViewSource.GetDefaultView(models.OrderBy(x => x.Time));            
+            DataGridModels = CollectionViewSource.GetDefaultView(models.OrderBy(x => x.Time));
         }
 
         private async Task ScanBackups()
@@ -482,7 +514,7 @@ namespace TSM_Analyzer.ViewModels
                 await dataStore.StoreItemNames(result.Item1.Items);
 
                 BackupStatus = "Storing processed files.";
-                foreach(var file in result.Item2)
+                foreach (var file in result.Item2)
                 {
                     await dataStore.StoreBackupScanned(file.FileName, file.ScanTime);
                 }

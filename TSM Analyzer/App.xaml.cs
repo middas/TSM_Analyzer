@@ -44,7 +44,7 @@ namespace TSM_Analyzer
         {
             base.OnStartup(e);
 
-            var mainWindow = serviceProvider.GetService<MainWindow>();
+            var mainWindow = serviceProvider.GetRequiredService<MainWindow>();
             mainWindow.Show();
         }
     }
