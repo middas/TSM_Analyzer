@@ -31,23 +31,23 @@ namespace TSM_Analyzer.ViewModels
             Cancelled
         }
 
-        public string Character { get; set; }
+        public string? Character { get; set; }
 
-        public string ItemID { get; set; }
+        public string? ItemID { get; set; }
 
-        public string ItemName { get; set; }
+        public string? ItemName { get; set; }
 
-        public Money Money { get; set; }
+        public Money? Money { get; set; }
 
         public int Quantity { get; set; }
 
-        public string Source { get; set; }
+        public string? Source { get; set; }
 
         public int StackSize { get; set; }
 
         public DateTime? Time { get; set; }
 
-        public Money Total { get; set; }
+        public Money? Total { get; set; }
 
         public ModelType Type { get; set; }
     }
@@ -70,6 +70,7 @@ namespace TSM_Analyzer.ViewModels
         private DateTime filterTo;
         private Func<double, string> goldLabelFormatter;
         private ObservableCollection<string> labels;
+        private Money overallProfit = 0;
         private DataGridColumn selectedColumn;
         private SeriesCollection series;
         private Money totalGold = 0;
@@ -85,7 +86,7 @@ namespace TSM_Analyzer.ViewModels
             FilterFrom = DateTime.Now.AddDays(-14);
             FilterTo = DateTime.Now.AddDays(1);
 
-            Task.Run(PopulateAllData);
+            _ = Task.Run(PopulateAllData);
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;
@@ -193,6 +194,17 @@ namespace TSM_Analyzer.ViewModels
 
         public ICommand LookupMissingItemsCommand => new RelayCommand(() => LookupMissingItems());
 
+        public Money OverallProfit
+        {
+            get => overallProfit;
+
+            set
+            {
+                overallProfit = value;
+                FirePropertyChanged();
+            }
+        }
+
         public ICommand ScanBackupsCommand => new RelayCommand(() => ScanBackups());
 
         public DataGridColumn SelectedColumn
@@ -274,7 +286,10 @@ namespace TSM_Analyzer.ViewModels
 
         private IEnumerable<DateTimeOffset> EnumerateDays(DateTimeOffset start, DateTimeOffset end)
         {
-            if (end < start) throw new ArgumentException($"{nameof(end)} cannot be less than {nameof(start)}");
+            if (end < start)
+            {
+                throw new ArgumentException($"{nameof(end)} cannot be less than {nameof(start)}");
+            }
 
             while (start <= end)
             {
@@ -307,7 +322,7 @@ namespace TSM_Analyzer.ViewModels
 
         private void PopulateAllData()
         {
-            Application.Current.Dispatcher.BeginInvoke(() =>
+            _ = Application.Current.Dispatcher.BeginInvoke(() =>
             {
                 PopulateCharacterData().Wait();
                 PopulateAuctionData().Wait();
@@ -319,7 +334,7 @@ namespace TSM_Analyzer.ViewModels
 
         private async Task PopulateAuctionData()
         {
-            TotalProfit = TotalSales = TotalPurchases = 0;
+            TotalProfit = TotalSales = TotalPurchases = OverallProfit = 0;
 
             try
             {
@@ -340,15 +355,16 @@ namespace TSM_Analyzer.ViewModels
                     TotalVendorSales = characterSaleModels.Where(x => x.Source.Equals("vendor", StringComparison.OrdinalIgnoreCase)).Select(x => x.Total).Sum();
                 }
 
-                var buyMin = auctionBuyModels.Any() ? auctionBuyModels.Min(x => x.TimeEpoch) : DateTimeOffset.Now.ToUnixTimeSeconds();
-                var saleMin = characterSaleModels.Any() ? characterSaleModels.Min(x => x.Time) : DateTimeOffset.Now.ToUnixTimeSeconds();
-                var minDate = DateTimeOffset.FromUnixTimeSeconds(Math.Min(buyMin, saleMin));
+                long buyMin = auctionBuyModels.Any() ? auctionBuyModels.Min(x => x.TimeEpoch) : DateTimeOffset.Now.ToUnixTimeSeconds();
+                long saleMin = characterSaleModels.Any() ? characterSaleModels.Min(x => x.Time) : DateTimeOffset.Now.ToUnixTimeSeconds();
+                DateTimeOffset minDate = DateTimeOffset.FromUnixTimeSeconds(Math.Min(buyMin, saleMin));
                 if (FilterFrom < minDate.Date)
                 {
                     FilterFrom = minDate.Date;
                 }
 
                 TotalProfit = TotalSales - TotalPurchases;
+                OverallProfit = TotalSales + TotalVendorSales - TotalPurchases;
             }
             catch
             {
@@ -369,13 +385,13 @@ namespace TSM_Analyzer.ViewModels
         private void PopulateChartData()
         {
             GoldLabelFormatter = c => ((Money)(long)c).ToString();
-            var valuesByDate = new Dictionary<DateTimeOffset, BoughtSold>();
+            Dictionary<DateTimeOffset, BoughtSold> valuesByDate = new();
             var soldAuctions = characterSaleModels.Where(x => x.Source.Equals("auction", StringComparison.OrdinalIgnoreCase)).GroupBy(x => x.TimeOfSale.LocalDateTime.Date).Select(x => new { x.Key, Money = x.Select(y => y.Total).Sum() });
             var soldVendors = characterSaleModels.Where(x => x.Source.Equals("vendor", StringComparison.OrdinalIgnoreCase)).GroupBy(x => x.TimeOfSale.LocalDateTime.Date).Select(x => new { x.Key, Money = x.Select(y => y.Total).Sum() });
             var bought = auctionBuyModels.GroupBy(x => x.Time.LocalDateTime.Date).Select(x => new { x.Key, Money = x.Select(y => y.Total).Sum() });
 
             Money prevDay = 0;
-            foreach (var date in EnumerateDays(FilterFrom.Date, FilterTo))
+            foreach (DateTimeOffset date in EnumerateDays(FilterFrom.Date, FilterTo))
             {
                 valuesByDate[date] = new BoughtSold(prevDay)
                 {
@@ -408,7 +424,7 @@ namespace TSM_Analyzer.ViewModels
                 new LineSeries
                 {
                     Title = "Total Profit",
-                    Values = new ChartValues<long>(valuesByDate.Select(x => (x.Value.RunningTotal).TotalCopper)),
+                    Values = new ChartValues<long>(valuesByDate.Select(x => x.Value.RunningTotal.TotalCopper)),
                     PointGeometry = null,
                     LabelPoint = point => ((Money)(long)point.Y).ToString()
                 },
@@ -424,7 +440,7 @@ namespace TSM_Analyzer.ViewModels
 
         private async Task PopulateDataGrid()
         {
-            var items = await dataStore.GetItems();
+            Dictionary<string, string> items = await dataStore.GetItems();
             List<DataGridModel> models = new();
 
             try
@@ -493,7 +509,7 @@ namespace TSM_Analyzer.ViewModels
             CanScan = false;
 
             DirectoryInfo backupDirectory = new(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), backupPath));
-            var backupsScanned = await dataStore.GetBackupsScanned();
+            string[] backupsScanned = await dataStore.GetBackupsScanned();
             await Task.Run(async () =>
             {
                 TsmBackupParser tsmBackupParser = new();
@@ -502,7 +518,7 @@ namespace TSM_Analyzer.ViewModels
                     BackupStatus = s;
                 };
 
-                var result = await tsmBackupParser.ParseBackups(backupDirectory, backupsScanned);
+                Tuple<BackupModel, TsmBackupParser.ScanFile[]> result = await tsmBackupParser.ParseBackups(backupDirectory, backupsScanned);
 
                 BackupStatus = "Storing character data.";
                 await dataStore.StoreCharacters(result.Item1.Characters);
@@ -523,7 +539,7 @@ namespace TSM_Analyzer.ViewModels
                 await dataStore.StoreItemNames(result.Item1.Items);
 
                 BackupStatus = "Storing processed files.";
-                foreach (var file in result.Item2)
+                foreach (TsmBackupParser.ScanFile file in result.Item2)
                 {
                     await dataStore.StoreBackupScanned(file.FileName, file.ScanTime);
                 }

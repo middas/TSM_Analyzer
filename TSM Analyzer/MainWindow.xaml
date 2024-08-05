@@ -6,7 +6,7 @@
         xmlns:lvc="clr-namespace:LiveCharts.Wpf;assembly=LiveCharts.Wpf"
         xmlns:control="http://filterdatagrid.control.com/2021"
         mc:Ignorable="d"
-        Title="TSM Analyzer" Height="768" Width="1024">
+        Title="TSM Analyzer" Height="960" Width="1280">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -48,6 +48,7 @@
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
                 <ColumnDefinition />
             </Grid.ColumnDefinitions>
 
@@ -74,6 +75,11 @@
             <TextBlock Grid.Column="4" Margin="5 0">
                 <Run>Total Auction Profit:</Run>
                 <Run Text="{Binding TotalProfit, Mode=OneWay}" />
+            </TextBlock>
+
+            <TextBlock Grid.Column="5" Margin="5 0">
+                <Run>Overall Profit:</Run>
+                <Run Text="{Binding OverallProfit, Mode=OneWay}" />
             </TextBlock>
         </Grid>
 
