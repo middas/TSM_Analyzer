@@ -2,11 +2,9 @@
 {
     public class Money : IComparable<Money>, IComparable
     {
-        private readonly long totalCopper;
-
         public Money(long totalCopper)
         {
-            this.totalCopper = totalCopper;
+            this.TotalCopper = totalCopper;
 
             Gold = (int)(totalCopper / 10000L);
             Silver = (int)((totalCopper - (Gold * 10000L)) / 100L);
@@ -19,29 +17,51 @@
 
         public int Silver { get; set; } = 0;
 
-        public long TotalCopper => totalCopper;
+        public long TotalCopper { get; }
 
-        public static Money operator -(Money a, Money b) => a.TotalCopper - b.TotalCopper;
+        public static Money operator -(Money a, Money b)
+        {
+            return a.TotalCopper - b.TotalCopper;
+        }
 
-        public static Money operator -(Money a) => -a.totalCopper;
+        public static Money operator -(Money a)
+        {
+            return -a.TotalCopper;
+        }
 
-        public static Money operator +(Money a, Money b) => a.TotalCopper + b.totalCopper;
+        public static Money operator +(Money a, Money b)
+        {
+            return a.TotalCopper + b.TotalCopper;
+        }
 
-        public static Money operator *(Money a, int b) => a.totalCopper * b;
+        public static Money operator *(Money a, int b)
+        {
+            return a.TotalCopper * b;
+        }
 
-        public static implicit operator Money(long copper) => new(copper);
+        public static implicit operator Money(long copper)
+        {
+            return new(copper);
+        }
+
+        public static implicit operator Money(double copper)
+        {
+            return new((long)copper);
+        }
 
         public int CompareTo(Money? other)
         {
-            if (other == null) return 0;
-            return TotalCopper.CompareTo(other.TotalCopper);
+            return other == null ? 0 : TotalCopper.CompareTo(other.TotalCopper);
         }
 
         public int CompareTo(object? obj)
         {
-            if (obj == null) return 0;
-            if (obj is Money m) return CompareTo(m);
-            return 0;
+            if (obj == null)
+            {
+                return 0;
+            }
+
+            return obj is Money m ? CompareTo(m) : 0;
         }
 
         public override string ToString()

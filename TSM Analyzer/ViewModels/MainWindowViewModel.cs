@@ -412,28 +412,28 @@ namespace TSM_Analyzer.ViewModels
                     Title = "Auction Sold Value",
                     Values = new ChartValues<long>(valuesByDate.Select(x => x.Value.SoldAuction.TotalCopper)),
                     PointGeometry = null,
-                    LabelPoint = point => ((Money)(long)point.Y).ToString()
+                    LabelPoint = point => ((Money)point.Y).ToString()
                 },
                 new LineSeries
                 {
                     Title = "Auction Bought Value",
                     Values = new ChartValues<long>(valuesByDate.Select(x => -x.Value.Bought.TotalCopper)),
                     PointGeometry = null,
-                    LabelPoint = point => ((Money)(long)point.Y).ToString()
+                    LabelPoint = point => ((Money)point.Y).ToString()
                 },
                 new LineSeries
                 {
                     Title = "Total Profit",
                     Values = new ChartValues<long>(valuesByDate.Select(x => x.Value.RunningTotal.TotalCopper)),
                     PointGeometry = null,
-                    LabelPoint = point => ((Money)(long)point.Y).ToString()
+                    LabelPoint = point => ((Money)point.Y).ToString()
                 },
                 new LineSeries
                 {
                     Title = "Vendor Sold Value",
                     Values = new ChartValues<long>(valuesByDate.Select(x => x.Value.SoldVendor.TotalCopper)),
                     PointGeometry = null,
-                    LabelPoint = point => ((Money)(long)point.Y).ToString()
+                    LabelPoint = point => ((Money)point.Y).ToString()
                 }
             };
         }
