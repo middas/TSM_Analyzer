@@ -329,6 +329,8 @@ namespace TSM_Analyzer.ViewModels
                 PopulateDataGrid().Wait();
 
                 PopulateChartData();
+
+                TotalGold += dataStore.GetWarBankAsync().Result.Money ?? new Money(0);
             });
         }
 
@@ -544,15 +546,17 @@ namespace TSM_Analyzer.ViewModels
                     await dataStore.StoreBackupScanned(file.FileName, file.ScanTime);
                 }
 
-                await PopulateCharacterData();
-                await PopulateAuctionData();
+                if (result.Item1.WarBankFound)
+                {
+                    BackupStatus = "Storing War Bank money.";
+                    await dataStore.UpdateWarBank(new WarBank { Money = new(result.Item1.WarBankMoney) });
+                }
             });
 
             CanScan = true;
             BackupStatus = "";
 
-            PopulateChartData();
-            await PopulateDataGrid();
+            PopulateAllData();
         }
 
         private class BoughtSold

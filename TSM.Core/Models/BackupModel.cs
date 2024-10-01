@@ -21,7 +21,7 @@ namespace TSM.Core.Models
 
         public BackupModel(IEnumerable<AuctionBuyModel> auctionBuyModels, IEnumerable<CancelledAuctionModel> cancelledAuctionModels,
             IEnumerable<Character> characters, IEnumerable<CharacterSaleModel> characterSaleModels, IEnumerable<ExpiredAuctionModel> expiredAuctionModels,
-            IDictionary<string, string> items)
+            IDictionary<string, string> items, long warBankMoney, bool warBankFound)
         {
             AuctionBuys = auctionBuyModels.ToImmutableArray();
             CancelledAuctions = cancelledAuctionModels.ToImmutableArray();
@@ -29,6 +29,8 @@ namespace TSM.Core.Models
             CharacterSaleModels = characterSaleModels.ToImmutableArray();
             ExpiredAuctions = expiredAuctionModels.ToImmutableArray();
             Items = items.ToImmutableDictionary();
+            WarBankMoney = warBankMoney;
+            WarBankFound = warBankFound;
         }
 
         public ImmutableArray<AuctionBuyModel> AuctionBuys { get; private set; }
@@ -42,6 +44,10 @@ namespace TSM.Core.Models
         public ImmutableArray<ExpiredAuctionModel> ExpiredAuctions { get; private set; }
 
         public ImmutableDictionary<string, string> Items { get; private set; }
+
+        public bool WarBankFound { get; private set; }
+
+        public long WarBankMoney { get; set; }
 
         private static IEnumerable<T> ParseCsv<T>(LuaModel lm)
         {
@@ -61,9 +67,9 @@ namespace TSM.Core.Models
 
         private static Dictionary<string, int> ParseItems(IEnumerable<LuaModel> children)
         {
-            if (children == null) return new Dictionary<string, int>();
-
-            return children.Select(c => new { c.Key, c.Value }).ToDictionary(x => x.Key, x => int.Parse(x.Value));
+            return children == null
+                ? new Dictionary<string, int>()
+                : children.Select(c => new { c.Key, c.Value }).ToDictionary(x => x.Key, x => int.Parse(x.Value));
         }
 
         private void PopulateAuctionBuys()
@@ -72,7 +78,7 @@ namespace TSM.Core.Models
             List<AuctionBuyModel> auctionBuyModels = new();
             LuaModel data = backingLuaModel[TradeSkillData];
 
-            foreach (var lm in data.Children.Where(x => x.Key.EndsWith("csvBuys")))
+            foreach (LuaModel? lm in data.Children.Where(x => x.Key.EndsWith("csvBuys")))
             {
                 auctionBuyModels.AddRange(ParseCsv<AuctionBuyModel>(lm));
             }
@@ -97,7 +103,7 @@ namespace TSM.Core.Models
             List<CancelledAuctionModel> cancelledAuctionModels = new();
             LuaModel data = backingLuaModel[TradeSkillData];
 
-            foreach (var lm in data.Children.Where(x => x.Key.EndsWith("csvCancelled")))
+            foreach (LuaModel? lm in data.Children.Where(x => x.Key.EndsWith("csvCancelled")))
             {
                 cancelledAuctionModels.AddRange(ParseCsv<CancelledAuctionModel>(lm));
             }
@@ -111,9 +117,12 @@ namespace TSM.Core.Models
             HashSet<Character> characters = new();
             LuaModel data = backingLuaModel[TradeSkillData];
 
-            if (data == null) throw new InvalidBackupException("Not a valid backup file.");
+            if (data == null)
+            {
+                throw new InvalidBackupException("Not a valid backup file.");
+            }
 
-            foreach (var characterLuaModel in data.Children.Where(x => x.Key.StartsWith("s@")))
+            foreach (LuaModel? characterLuaModel in data.Children.Where(x => x.Key.StartsWith("s@")))
             {
                 Match match = Regex.Match(characterLuaModel.Key, characterRexex);
 
@@ -122,7 +131,7 @@ namespace TSM.Core.Models
                     Character character = new(match.Groups["name"].Value, Enum.Parse<Faction>(match.Groups["faction"].Value), match.Groups["realm"].Value);
                     if (!characters.Add(character))
                     {
-                        characters.TryGetValue(character, out character);
+                        _ = characters.TryGetValue(character, out character);
                     }
 
                     switch (match.Groups["type"].Value)
@@ -171,7 +180,7 @@ namespace TSM.Core.Models
             List<CharacterSaleModel> characterSaleModels = new();
             LuaModel data = backingLuaModel[TradeSkillData];
 
-            foreach (var lm in data.Children.Where(x => x.Key.EndsWith("csvSales")))
+            foreach (LuaModel? lm in data.Children.Where(x => x.Key.EndsWith("csvSales")))
             {
                 characterSaleModels.AddRange(ParseCsv<CharacterSaleModel>(lm));
             }
@@ -184,6 +193,7 @@ namespace TSM.Core.Models
             PopulateCharacterData();
             PopulateAuctionData();
             PopulateKnownItems();
+            PopulateWarBank();
         }
 
         private void PopulateExpiredAuctions()
@@ -192,12 +202,12 @@ namespace TSM.Core.Models
             List<ExpiredAuctionModel> expiredAuctions = new();
             LuaModel data = backingLuaModel[TradeSkillData];
 
-            foreach (var lm in data.Children.Where(x => x.Key.EndsWith("csvExpired")))
+            foreach (LuaModel? lm in data.Children.Where(x => x.Key.EndsWith("csvExpired")))
             {
                 expiredAuctions.AddRange(ParseCsv<ExpiredAuctionModel>(lm));
             }
 
-            foreach (var expiredAuction in expiredAuctions)
+            foreach (ExpiredAuctionModel expiredAuction in expiredAuctions)
             {
                 expiredAuction.Hash = expiredAuction.GetHashCode();
             }
@@ -215,8 +225,8 @@ namespace TSM.Core.Models
 
             foreach (LuaModel lm in data.Children.Where(x => x.Key.EndsWith("auctionSaleHints")))
             {
-                var character = Characters.Single(c => c.Name == lm.Key[2..(lm.Key.IndexOf(' '))]);
-                foreach (var sale in lm.Children)
+                Character character = Characters.Single(c => c.Name == lm.Key[2..lm.Key.IndexOf(' ')]);
+                foreach (LuaModel sale in lm.Children)
                 {
                     string[] keySplit = sale.Key.Split(separator);
                     items[keySplit[1]] = keySplit[0];
@@ -224,6 +234,22 @@ namespace TSM.Core.Models
             }
 
             Items = items.ToImmutableDictionary();
+        }
+
+        private void PopulateWarBank()
+        {
+            LuaModel data = backingLuaModel[TradeSkillData];
+
+            IEnumerable<long>? results = data.Children.Where(x => x.Key.EndsWith("warbankMoney")).Select(x =>
+            {
+                return long.TryParse(x.Value, out long result) ? result : result;
+            });
+
+            if (results is not null)
+            {
+                WarBankMoney = results.Max();
+                WarBankFound = true;
+            }
         }
     }
 }

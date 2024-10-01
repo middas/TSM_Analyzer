@@ -1,5 +1,4 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using System.Diagnostics;
 using TSM.Core.LocalStorage;
 using TSM.Data.Models;
 using core = TSM.Core.Models;
@@ -22,7 +21,7 @@ namespace TSM.Data
 
         public async Task<IEnumerable<core.AuctionBuyModel>> GetAuctionBuyModels()
         {
-            var storeCharacterBuys = await dbContext.CharacterBuys.ToArrayAsync();
+            CharacterBuy[] storeCharacterBuys = await dbContext.CharacterBuys.ToArrayAsync();
 
             return storeCharacterBuys.Select(x => new core.AuctionBuyModel
             {
@@ -55,7 +54,7 @@ namespace TSM.Data
 
         public async Task<IEnumerable<core.CharacterSaleModel>> GetCharacterSaleModels()
         {
-            var storeSales = await dbContext.CharacterAuctionSales.ToArrayAsync();
+            CharacterAuctionSale[] storeSales = await dbContext.CharacterAuctionSales.ToArrayAsync();
 
             return storeSales.Select(x => new core.CharacterSaleModel
             {
@@ -71,7 +70,7 @@ namespace TSM.Data
 
         public async Task<IEnumerable<core.Character>> GetCharactersData()
         {
-            var storeCharacters = await dbContext.Characters.Include(c => c.CharacterMailItems).Include(c => c.CharacterBankItems)
+            Character[] storeCharacters = await dbContext.Characters.Include(c => c.CharacterMailItems).Include(c => c.CharacterBankItems)
                 .Include(c => c.CharacterReagents).Include(c => c.CharacterInventoryItems).ToArrayAsync();
 
             return storeCharacters.Select(c => (core.Character)c).ToArray();
@@ -81,11 +80,11 @@ namespace TSM.Data
         {
             if (await dbContext.CharacterExpiredAuctions.AnyAsync(x => x.Hash == 0))
             {
-                var dbModels = dbContext.CharacterExpiredAuctions.Where(x => x.Hash == 0);
+                IQueryable<CharacterExpiredAuction> dbModels = dbContext.CharacterExpiredAuctions.Where(x => x.Hash == 0);
 
-                foreach (var m in dbModels)
+                foreach (CharacterExpiredAuction? m in dbModels)
                 {
-                    var tempModel = new core.ExpiredAuctionModel
+                    core.ExpiredAuctionModel tempModel = new()
                     {
                         ItemId = m.ItemID,
                         Player = m.Character.Name,
@@ -97,10 +96,10 @@ namespace TSM.Data
                     m.Hash = tempModel.GetHashCode();
                 }
 
-                await dbContext.SaveChangesAsync();
+                _ = await dbContext.SaveChangesAsync();
             }
 
-            var models = await dbContext.CharacterExpiredAuctions.Select(x => new core.ExpiredAuctionModel
+            core.ExpiredAuctionModel[] models = await dbContext.CharacterExpiredAuctions.Select(x => new core.ExpiredAuctionModel
             {
                 ItemId = x.ItemID,
                 Player = x.Character.Name,
@@ -111,6 +110,16 @@ namespace TSM.Data
             }).ToArrayAsync();
 
             return models;
+        }
+
+        public async Task<core.WarBank> GetWarBankAsync()
+        {
+            WarBank? warBank = await dbContext.WarBanks.FirstOrDefaultAsync();
+
+            return new core.WarBank
+            {
+                Money = new(warBank?.Copper ?? 0)
+            };
         }
 
         public Task<Dictionary<string, string>> GetItems()
@@ -126,15 +135,15 @@ namespace TSM.Data
             }
 
             Character[] characters = dbContext.Characters.ToArray();
-            var minDate = await dbContext.CharacterBuys.Select(x => x.BoughtTime).Distinct().OrderByDescending(x => x).Skip(1).FirstOrDefaultAsync();
-            var characterBuys = dbContext.CharacterBuys.Where(x => x.BoughtTime >= minDate).ToArray();
+            DateTime minDate = await dbContext.CharacterBuys.Select(x => x.BoughtTime).Distinct().OrderByDescending(x => x).Skip(1).FirstOrDefaultAsync();
+            CharacterBuy[] characterBuys = dbContext.CharacterBuys.Where(x => x.BoughtTime >= minDate).ToArray();
 
-            var characterGroupedAuctionBuyModels = auctionBuyModels.Where(x => x.Time >= minDate).GroupBy(x => x.Player);
-            foreach (var characterGroupedAuctionBuyModel in characterGroupedAuctionBuyModels)
+            IEnumerable<IGrouping<string, core.AuctionBuyModel>> characterGroupedAuctionBuyModels = auctionBuyModels.Where(x => x.Time >= minDate).GroupBy(x => x.Player);
+            foreach (IGrouping<string, core.AuctionBuyModel> characterGroupedAuctionBuyModel in characterGroupedAuctionBuyModels)
             {
-                var character = characters.Single(c => c.Name == characterGroupedAuctionBuyModel.Key);
+                Character character = characters.Single(c => c.Name == characterGroupedAuctionBuyModel.Key);
 
-                foreach (var auctionBuyModel in characterGroupedAuctionBuyModel)
+                foreach (core.AuctionBuyModel? auctionBuyModel in characterGroupedAuctionBuyModel)
                 {
                     if (!characterBuys.Any(x => x.ItemID == auctionBuyModel.ItemId
                      && x.BoughtTime == auctionBuyModel.Time.UtcDateTime && x.Source == auctionBuyModel.Source && x.Quantity == auctionBuyModel.Quantity))
@@ -150,24 +159,24 @@ namespace TSM.Data
                             StackSize = auctionBuyModel.StackSize
                         };
 
-                        await dbContext.AddAsync(storeCharacterBuy);
+                        _ = await dbContext.AddAsync(storeCharacterBuy);
                     }
                 }
             }
 
-            await dbContext.SaveChangesAsync();
+            _ = await dbContext.SaveChangesAsync();
         }
 
         public async Task StoreBackupScanned(FileInfo backupFile, DateTimeOffset startTime)
         {
-            await dbContext.ScannedBackups.AddAsync(new ScannedBackup
+            _ = await dbContext.ScannedBackups.AddAsync(new ScannedBackup
             {
                 BackupPath = backupFile.FullName,
                 ScannedTime = startTime.UtcDateTime,
                 Duration = DateTimeOffset.Now.Subtract(startTime).TotalSeconds
             });
 
-            await dbContext.SaveChangesAsync();
+            _ = await dbContext.SaveChangesAsync();
         }
 
         public async Task StoreCancelledAuctions(IEnumerable<core.CancelledAuctionModel> cancelledAuctionModels)
@@ -180,15 +189,15 @@ namespace TSM.Data
             if (cancelledAuctionModels != null && cancelledAuctionModels.Any())
             {
                 Character[] characters = dbContext.Characters.ToArray();
-                var minDate = await dbContext.CharacterCancelledAuctions.Select(x => x.CancelledTime).Distinct().OrderByDescending(x => x).Skip(1).FirstOrDefaultAsync();
-                var characterCancelledAuctions = dbContext.CharacterCancelledAuctions.Where(x => x.CancelledTime >= minDate).ToArray();
+                DateTime minDate = await dbContext.CharacterCancelledAuctions.Select(x => x.CancelledTime).Distinct().OrderByDescending(x => x).Skip(1).FirstOrDefaultAsync();
+                CharacterCancelledAuction[] characterCancelledAuctions = dbContext.CharacterCancelledAuctions.Where(x => x.CancelledTime >= minDate).ToArray();
 
-                var characterGroupedCancelledAuctionModels = cancelledAuctionModels.Where(x => x.Time >= minDate).GroupBy(x => x.PlayerName);
-                foreach (var characterGroupedCancelledAuctionModel in characterGroupedCancelledAuctionModels)
+                IEnumerable<IGrouping<string, core.CancelledAuctionModel>> characterGroupedCancelledAuctionModels = cancelledAuctionModels.Where(x => x.Time >= minDate).GroupBy(x => x.PlayerName);
+                foreach (IGrouping<string, core.CancelledAuctionModel> characterGroupedCancelledAuctionModel in characterGroupedCancelledAuctionModels)
                 {
-                    var character = characters.Single(c => c.Name == characterGroupedCancelledAuctionModel.Key);
+                    Character character = characters.Single(c => c.Name == characterGroupedCancelledAuctionModel.Key);
 
-                    foreach (var cancelledAuctionModel in characterGroupedCancelledAuctionModel)
+                    foreach (core.CancelledAuctionModel? cancelledAuctionModel in characterGroupedCancelledAuctionModel)
                     {
                         if (!characterCancelledAuctions.Any(x => x.ItemID == cancelledAuctionModel.ItemId
                          && x.CancelledTime == cancelledAuctionModel.Time.UtcDateTime))
@@ -202,12 +211,12 @@ namespace TSM.Data
                                 StackSize = cancelledAuctionModel.StackSize
                             };
 
-                            await dbContext.AddAsync(storeCharacterCancelledAuction);
+                            _ = await dbContext.AddAsync(storeCharacterCancelledAuction);
                         }
                     }
                 }
 
-                await dbContext.SaveChangesAsync();
+                _ = await dbContext.SaveChangesAsync();
             }
         }
 
@@ -218,7 +227,7 @@ namespace TSM.Data
                 return;
             }
 
-            foreach (var character in characters)
+            foreach (core.Character character in characters)
             {
                 Character storeCharacter = await dbContext.Characters.Include(c => c.CharacterReagents).Include(c => c.CharacterBankItems)
                     .Include(c => c.CharacterInventoryItems).Include(c => c.CharacterMailItems).SingleOrDefaultAsync(c => c.Name == character.Name
@@ -238,7 +247,7 @@ namespace TSM.Data
                         CharacterMailItems = new List<CharacterMailItem>()
                     };
 
-                    await dbContext.AddAsync(storeCharacter);
+                    _ = await dbContext.AddAsync(storeCharacter);
                 }
 
                 storeCharacter.Copper = character.Money.TotalCopper;
@@ -248,7 +257,7 @@ namespace TSM.Data
                 SetCharacterMail(storeCharacter.CharacterMailItems, character.MailItems);
                 storeCharacter.LastUpdateTime = character.GoldLogLastUpdate.UtcDateTime;
             }
-            await dbContext.SaveChangesAsync();
+            _ = await dbContext.SaveChangesAsync();
         }
 
         public async Task StoreCharacterSales(IEnumerable<core.CharacterSaleModel> characterSaleModels)
@@ -259,15 +268,15 @@ namespace TSM.Data
             }
 
             Character[] characters = dbContext.Characters.ToArray();
-            var minDate = await dbContext.CharacterAuctionSales.Select(x => x.TimeOfSale).Distinct().OrderByDescending(x => x).Skip(1).FirstOrDefaultAsync();
-            var characterAuctionSales = dbContext.CharacterAuctionSales.AsEnumerable().Where(x => x.TimeOfSale >= minDate).ToArray();
+            DateTime minDate = await dbContext.CharacterAuctionSales.Select(x => x.TimeOfSale).Distinct().OrderByDescending(x => x).Skip(1).FirstOrDefaultAsync();
+            CharacterAuctionSale[] characterAuctionSales = dbContext.CharacterAuctionSales.AsEnumerable().Where(x => x.TimeOfSale >= minDate).ToArray();
 
-            var saleModelsByCharacter = characterSaleModels.Where(x => x.TimeOfSale >= minDate).GroupBy(x => x.Character);
-            foreach (var groupedCharacterSaleModel in saleModelsByCharacter)
+            IEnumerable<IGrouping<string, core.CharacterSaleModel>> saleModelsByCharacter = characterSaleModels.Where(x => x.TimeOfSale >= minDate).GroupBy(x => x.Character);
+            foreach (IGrouping<string, core.CharacterSaleModel> groupedCharacterSaleModel in saleModelsByCharacter)
             {
-                var character = characters.Single(c => c.Name == groupedCharacterSaleModel.Key);
+                Character character = characters.Single(c => c.Name == groupedCharacterSaleModel.Key);
 
-                foreach (var characterSaleModel in groupedCharacterSaleModel)
+                foreach (core.CharacterSaleModel? characterSaleModel in groupedCharacterSaleModel)
                 {
                     if (!characterAuctionSales.Any(x => x.ItemID == characterSaleModel.ItemID
                      && x.TimeOfSale == characterSaleModel.TimeOfSale.UtcDateTime && x.Copper == characterSaleModel.Money.TotalCopper && x.Quantity == characterSaleModel.Quantity
@@ -284,12 +293,12 @@ namespace TSM.Data
                             StackSize = characterSaleModel.StackSize
                         };
 
-                        await dbContext.AddAsync(storeCharacterAuctionSale);
+                        _ = await dbContext.AddAsync(storeCharacterAuctionSale);
                     }
                 }
             }
 
-            await dbContext.SaveChangesAsync();
+            _ = await dbContext.SaveChangesAsync();
         }
 
         public async Task StoreExpiredAuctions(IEnumerable<core.ExpiredAuctionModel> expiredAuctionModels)
@@ -301,15 +310,15 @@ namespace TSM.Data
 
             if (expiredAuctionModels != null && expiredAuctionModels.Any())
             {
-                var minDate = await dbContext.CharacterExpiredAuctions.Select(x => x.ExpiredTime).Distinct().OrderByDescending(x => x).Skip(1).FirstOrDefaultAsync();
+                DateTime minDate = await dbContext.CharacterExpiredAuctions.Select(x => x.ExpiredTime).Distinct().OrderByDescending(x => x).Skip(1).FirstOrDefaultAsync();
                 Character[] characters = dbContext.Characters.ToArray();
-                var characterExpiredAuctions = dbContext.CharacterExpiredAuctions.Where(x => x.ExpiredTime >= minDate).Select(x => x.Hash).ToArray();
+                int[] characterExpiredAuctions = dbContext.CharacterExpiredAuctions.Where(x => x.ExpiredTime >= minDate).Select(x => x.Hash).ToArray();
 
-                foreach (var characterGroupedExpiredAuctions in expiredAuctionModels.GroupBy(x => x.Player))
+                foreach (IGrouping<string, core.ExpiredAuctionModel> characterGroupedExpiredAuctions in expiredAuctionModels.GroupBy(x => x.Player))
                 {
                     Character character = characters.Single(c => c.Name == characterGroupedExpiredAuctions.Key);
 
-                    foreach (var expiredAuctionModel in characterGroupedExpiredAuctions.Where(x => x.Time >= minDate && !characterExpiredAuctions.Any(h => x.Hash == h)))
+                    foreach (core.ExpiredAuctionModel? expiredAuctionModel in characterGroupedExpiredAuctions.Where(x => x.Time >= minDate && !characterExpiredAuctions.Any(h => x.Hash == h)))
                     {
                         CharacterExpiredAuction storeCharacterExpiredAuction = new()
                         {
@@ -321,11 +330,11 @@ namespace TSM.Data
                             Hash = expiredAuctionModel.Hash
                         };
 
-                        await dbContext.AddAsync(storeCharacterExpiredAuction);
+                        _ = await dbContext.AddAsync(storeCharacterExpiredAuction);
                     }
                 }
 
-                await dbContext.SaveChangesAsync();
+                _ = await dbContext.SaveChangesAsync();
             }
         }
 
@@ -336,25 +345,45 @@ namespace TSM.Data
                 return;
             }
 
-            var storeItems = dbContext.Items.Select(x => x.ItemID).ToArray();
+            string[] storeItems = dbContext.Items.Select(x => x.ItemID).ToArray();
 
-            foreach (var item in items.Where(x => !storeItems.Contains(x.Key)))
+            foreach (KeyValuePair<string, string> item in items.Where(x => !storeItems.Contains(x.Key)))
             {
-                await dbContext.Items.AddAsync(new Item
+                _ = await dbContext.Items.AddAsync(new Item
                 {
                     ItemID = item.Key,
                     Name = item.Value
                 });
             }
 
-            await dbContext.SaveChangesAsync();
+            _ = await dbContext.SaveChangesAsync();
+        }
+
+        public async Task UpdateWarBank(core.WarBank warBank)
+        {
+            if (warBank is null)
+            {
+                return;
+            }
+
+            WarBank? storeWarBank = dbContext.WarBanks.FirstOrDefault();
+
+            if (storeWarBank is null)
+            {
+                storeWarBank = new();
+                _ = await dbContext.WarBanks.AddAsync(storeWarBank);
+            }
+
+            storeWarBank.Copper = warBank.Money?.TotalCopper ?? 0;
+
+            _ = await dbContext.SaveChangesAsync();
         }
 
         private void SetCharacterBank(ICollection<CharacterBank> characterBankItems, Dictionary<string, int> bankItems)
         {
             characterBankItems.Clear();
 
-            foreach (var kvp in bankItems)
+            foreach (KeyValuePair<string, int> kvp in bankItems)
             {
                 characterBankItems.Add(new CharacterBank
                 {
@@ -368,7 +397,7 @@ namespace TSM.Data
         {
             characterInventoryItems.Clear();
 
-            foreach (var kvp in bagItems)
+            foreach (KeyValuePair<string, int> kvp in bagItems)
             {
                 characterInventoryItems.Add(new CharacterInventory
                 {
@@ -382,7 +411,7 @@ namespace TSM.Data
         {
             characterMailItems.Clear();
 
-            foreach (var mailItem in mailItems)
+            foreach (KeyValuePair<string, int> mailItem in mailItems)
             {
                 characterMailItems.Add(new CharacterMailItem
                 {
@@ -396,7 +425,7 @@ namespace TSM.Data
         {
             characterReagents.Clear();
 
-            foreach (var kvp in reagentItems)
+            foreach (KeyValuePair<string, int> kvp in reagentItems)
             {
                 characterReagents.Add(new CharacterReagent
                 {

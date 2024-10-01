@@ -18,8 +18,15 @@ namespace TSM.Logic.Data_Parser
 
         public static async Task<BackupModel> ParseBackup(FileInfo backupPath)
         {
-            if (backupPath == null) throw new ArgumentNullException(nameof(backupPath));
-            if (!backupPath.Exists) throw new FileNotFoundException();
+            if (backupPath == null)
+            {
+                throw new ArgumentNullException(nameof(backupPath));
+            }
+
+            if (!backupPath.Exists)
+            {
+                throw new FileNotFoundException();
+            }
 
             bool doCleanup = false;
             if (backupPath.Extension.Equals(ZipExtension, StringComparison.OrdinalIgnoreCase))
@@ -28,7 +35,10 @@ namespace TSM.Logic.Data_Parser
                 backupPath = await ExtractBackupZipContents(backupPath);
             }
 
-            if (!backupPath.Extension.Equals(LuaFileExtension, StringComparison.OrdinalIgnoreCase)) throw new InvalidBackupException("Not a valid lua backup.");
+            if (!backupPath.Extension.Equals(LuaFileExtension, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidBackupException("Not a valid lua backup.");
+            }
 
             LuaModel luaModel = await LuaParser.ParseLua(backupPath);
 
@@ -50,8 +60,10 @@ namespace TSM.Logic.Data_Parser
             HashSet<CancelledAuctionModel> cancelledAuctionModels = new();
             Dictionary<string, string> itemNames = new();
             List<ScanFile> scannedFiles = new();
+            long warBankMoney = 0;
+            bool warBankFound = false;
 
-            foreach (var backupFile in backupDirectory.GetFiles().OrderBy(f => f.CreationTime))
+            foreach (FileInfo? backupFile in backupDirectory.GetFiles().OrderBy(f => f.CreationTime))
             {
                 if (backupsScanned.Contains(backupFile.FullName))
                 {
@@ -59,7 +71,7 @@ namespace TSM.Logic.Data_Parser
                 }
 
                 OnStatusUpdated?.Invoke($"Parsing {backupFile.Name}");
-                var backup = await ParseBackup(backupFile);
+                BackupModel backup = await ParseBackup(backupFile);
 
                 DateTimeOffset startTime = DateTimeOffset.Now;
                 characters.UnionWith(backup.Characters);
@@ -74,11 +86,17 @@ namespace TSM.Logic.Data_Parser
 
                 scannedFiles.Add(new ScanFile(backupFile, startTime));
 
-                itemNames.MergeLeft(backup.Items);
+                _ = itemNames.MergeLeft(backup.Items);
+
+                warBankMoney = backup.WarBankMoney;
+                if (backup.WarBankFound)
+                {
+                    warBankFound = true;
+                }
             }
 
             return new Tuple<BackupModel, ScanFile[]>(new BackupModel(auctionBuyModels, cancelledAuctionModels, characters,
-                characterSaleModels, expiredAuctionModels, itemNames), scannedFiles.ToArray());
+                characterSaleModels, expiredAuctionModels, itemNames, warBankMoney, warBankFound), scannedFiles.ToArray());
         }
 
         private static async Task<FileInfo> ExtractBackupZipContents(FileInfo backupPath)
@@ -86,11 +104,11 @@ namespace TSM.Logic.Data_Parser
             try
             {
                 string tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-                Directory.CreateDirectory(tempDir);
+                _ = Directory.CreateDirectory(tempDir);
 
                 using FileStream fs = new(backupPath.FullName, FileMode.Open, FileAccess.Read);
-                using var zipArchive = ArchiveFactory.Open(fs);
-                var entry = zipArchive.Entries.FirstOrDefault(e => e.Key.Equals(DefaultLuaBackupFileName, StringComparison.OrdinalIgnoreCase));
+                using IArchive zipArchive = ArchiveFactory.Open(fs);
+                IArchiveEntry? entry = zipArchive.Entries.FirstOrDefault(e => e.Key.Equals(DefaultLuaBackupFileName, StringComparison.OrdinalIgnoreCase));
 
                 if (entry == null)
                 {

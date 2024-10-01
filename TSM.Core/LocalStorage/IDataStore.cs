@@ -20,6 +20,8 @@ namespace TSM.Core.LocalStorage
 
         Task<Dictionary<string, string>> GetItems();
 
+        Task<WarBank> GetWarBankAsync();
+
         Task StoreAuctionBuys(IEnumerable<AuctionBuyModel> auctionBuyModels);
 
         Task StoreBackupScanned(FileInfo backupFile, DateTimeOffset startTime);
@@ -33,5 +35,7 @@ namespace TSM.Core.LocalStorage
         Task StoreExpiredAuctions(IEnumerable<ExpiredAuctionModel> expiredAuctionModels);
 
         Task StoreItemNames(IDictionary<string, string> items);
+
+        Task UpdateWarBank(WarBank warBank);
     }
 }

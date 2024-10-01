@@ -34,5 +34,7 @@ namespace TSM.Data
         internal DbSet<Item> Items { get; set; }
 
         internal DbSet<ScannedBackup> ScannedBackups { get; set; }
+
+        internal DbSet<WarBank> WarBanks { get; set; }
     }
 }

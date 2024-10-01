@@ -6,7 +6,7 @@
         xmlns:lvc="clr-namespace:LiveCharts.Wpf;assembly=LiveCharts.Wpf"
         xmlns:control="http://filterdatagrid.control.com/2021"
         mc:Ignorable="d"
-        Title="TSM Analyzer" Height="960" Width="1280">
+        Title="TSM Analyzer" Height="960" Width="1280" WindowStartupLocation="CenterScreen">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
