@@ -135,10 +135,9 @@ namespace TSM.Data
             }
 
             Character[] characters = dbContext.Characters.ToArray();
-            DateTime minDate = await dbContext.CharacterBuys.Select(x => x.BoughtTime).Distinct().OrderByDescending(x => x).Skip(1).FirstOrDefaultAsync();
-            CharacterBuy[] characterBuys = dbContext.CharacterBuys.Where(x => x.BoughtTime >= minDate).ToArray();
+            CharacterBuy[] characterBuys = dbContext.CharacterBuys.ToArray();
 
-            IEnumerable<IGrouping<string, core.AuctionBuyModel>> characterGroupedAuctionBuyModels = auctionBuyModels.Where(x => x.Time >= minDate).GroupBy(x => x.Player);
+            IEnumerable<IGrouping<string, core.AuctionBuyModel>> characterGroupedAuctionBuyModels = auctionBuyModels.GroupBy(x => x.Player);
             foreach (IGrouping<string, core.AuctionBuyModel> characterGroupedAuctionBuyModel in characterGroupedAuctionBuyModels)
             {
                 Character character = characters.Single(c => c.Name == characterGroupedAuctionBuyModel.Key);
@@ -189,10 +188,9 @@ namespace TSM.Data
             if (cancelledAuctionModels != null && cancelledAuctionModels.Any())
             {
                 Character[] characters = dbContext.Characters.ToArray();
-                DateTime minDate = await dbContext.CharacterCancelledAuctions.Select(x => x.CancelledTime).Distinct().OrderByDescending(x => x).Skip(1).FirstOrDefaultAsync();
-                CharacterCancelledAuction[] characterCancelledAuctions = dbContext.CharacterCancelledAuctions.Where(x => x.CancelledTime >= minDate).ToArray();
+                CharacterCancelledAuction[] characterCancelledAuctions = dbContext.CharacterCancelledAuctions.ToArray();
 
-                IEnumerable<IGrouping<string, core.CancelledAuctionModel>> characterGroupedCancelledAuctionModels = cancelledAuctionModels.Where(x => x.Time >= minDate).GroupBy(x => x.PlayerName);
+                IEnumerable<IGrouping<string, core.CancelledAuctionModel>> characterGroupedCancelledAuctionModels = cancelledAuctionModels.GroupBy(x => x.PlayerName);
                 foreach (IGrouping<string, core.CancelledAuctionModel> characterGroupedCancelledAuctionModel in characterGroupedCancelledAuctionModels)
                 {
                     Character character = characters.Single(c => c.Name == characterGroupedCancelledAuctionModel.Key);
@@ -268,10 +266,9 @@ namespace TSM.Data
             }
 
             Character[] characters = dbContext.Characters.ToArray();
-            DateTime minDate = await dbContext.CharacterAuctionSales.Select(x => x.TimeOfSale).Distinct().OrderByDescending(x => x).Skip(1).FirstOrDefaultAsync();
-            CharacterAuctionSale[] characterAuctionSales = dbContext.CharacterAuctionSales.AsEnumerable().Where(x => x.TimeOfSale >= minDate).ToArray();
+            CharacterAuctionSale[] characterAuctionSales = dbContext.CharacterAuctionSales.ToArray();
 
-            IEnumerable<IGrouping<string, core.CharacterSaleModel>> saleModelsByCharacter = characterSaleModels.Where(x => x.TimeOfSale >= minDate).GroupBy(x => x.Character);
+            IEnumerable<IGrouping<string, core.CharacterSaleModel>> saleModelsByCharacter = characterSaleModels.GroupBy(x => x.Character);
             foreach (IGrouping<string, core.CharacterSaleModel> groupedCharacterSaleModel in saleModelsByCharacter)
             {
                 Character character = characters.Single(c => c.Name == groupedCharacterSaleModel.Key);
@@ -310,15 +307,14 @@ namespace TSM.Data
 
             if (expiredAuctionModels != null && expiredAuctionModels.Any())
             {
-                DateTime minDate = await dbContext.CharacterExpiredAuctions.Select(x => x.ExpiredTime).Distinct().OrderByDescending(x => x).Skip(1).FirstOrDefaultAsync();
                 Character[] characters = dbContext.Characters.ToArray();
-                int[] characterExpiredAuctions = dbContext.CharacterExpiredAuctions.Where(x => x.ExpiredTime >= minDate).Select(x => x.Hash).ToArray();
+                CharacterExpiredAuction[] characterExpiredAuctions = dbContext.CharacterExpiredAuctions.ToArray();
 
                 foreach (IGrouping<string, core.ExpiredAuctionModel> characterGroupedExpiredAuctions in expiredAuctionModels.GroupBy(x => x.Player))
                 {
                     Character character = characters.Single(c => c.Name == characterGroupedExpiredAuctions.Key);
 
-                    foreach (core.ExpiredAuctionModel? expiredAuctionModel in characterGroupedExpiredAuctions.Where(x => x.Time >= minDate && !characterExpiredAuctions.Any(h => x.Hash == h)))
+                    foreach (core.ExpiredAuctionModel? expiredAuctionModel in characterGroupedExpiredAuctions.Where(x => !characterExpiredAuctions.Any(e => x.ItemId != e.ItemID && x.Quantity != e.Quantity && x.StackSize != e.StackSize && x.Time != e.ExpiredTime)))
                     {
                         CharacterExpiredAuction storeCharacterExpiredAuction = new()
                         {

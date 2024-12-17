@@ -245,7 +245,7 @@ namespace TSM.Core.Models
                 return long.TryParse(x.Value, out long result) ? result : result;
             });
 
-            if (results is not null)
+            if (results is not null && results.Count() > 0)
             {
                 WarBankMoney = results.Max();
                 WarBankFound = true;
